@@ -150,6 +150,33 @@
   margin: 0;
 }
 
+[data-theme='dark'] .mainSection {
+  background: linear-gradient(180deg, #0f1525 0%, #121c2f 100%);
+}
+
+[data-theme='dark'] .blockHeader p,
+[data-theme='dark'] .featureCard p,
+[data-theme='dark'] .docCard p {
+  color: #b8c8df;
+}
+
+[data-theme='dark'] .commandCard,
+[data-theme='dark'] .featureCard,
+[data-theme='dark'] .docCard {
+  background: #172235;
+  border-color: #2b3d5d;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.34);
+}
+
+[data-theme='dark'] .commandCard code {
+  color: #9ac1ff;
+}
+
+[data-theme='dark'] .docCard:hover {
+  border-color: #6ea8ff;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.44);
+}
+
 @media (max-width: 996px) {
   .heroBanner {
     padding: 4.6rem 0 3.8rem;
