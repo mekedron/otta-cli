@@ -76,7 +76,7 @@ func newCalendarDetailedCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "detailed",
-		Short: "Generate detailed day-by-day calendar report.",
+		Short: "Generate detailed day-by-day calendar report (preferred for personal worktime summaries).",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			selectedFormat, err := resolveOutputFormat(cmd, outputFormat, outputFormatText, outputFormatJSON)
 			if err != nil {

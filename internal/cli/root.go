@@ -85,6 +85,7 @@ func renderRootHelp(out io.Writer, root *cobra.Command) {
 	_, _ = fmt.Fprintln(out, "  - use --duration-format minutes|hours|days|hhmm for converted totals.")
 	_, _ = fmt.Fprintln(out, "  - worktimes commands return only worktime rows (no absences).")
 	_, _ = fmt.Fprintln(out, "  - for full schedule checks, prefer calendar detailed/overview.")
+	_, _ = fmt.Fprintln(out, "  - for personal worktime summaries, prefer calendar detailed.")
 	_, _ = fmt.Fprintln(out)
 	_, _ = fmt.Fprintln(out, "full reference:")
 	emitReference(out, root, root.Name())

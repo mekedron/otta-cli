@@ -116,6 +116,8 @@ otta calendar detailed \
   --format json
 ```
 
+- Preferred way for a user to observe the summary for personal work times.
+
 Use alternate duration units when totals are minute-based:
 
 ```bash
@@ -158,7 +160,7 @@ Use these variables when running in CI/non-interactive environments:
 
 1. Prefer `--format json` for all data-producing commands and parse response fields instead of scraping text output.
 2. `worktimes list/browse/report` are worktime-only and never include absences; do not infer absences from empty worktime rows.
-3. For user schedule checks/log interpretation, prefer `calendar detailed --format json` first; use `calendar overview` as lighter fallback.
+3. For user schedule checks/log interpretation and personal worktime summaries, prefer `calendar detailed --format json` first; use `calendar overview` as lighter fallback.
 4. Use `--duration-format` when users request non-minute output; keep raw minute values for auditability.
 5. Run `status --format json` before operations that rely on cached user/worktimegroup metadata.
 6. Validate dates/times before command execution (`YYYY-MM-DD`, `HH:MM`).
