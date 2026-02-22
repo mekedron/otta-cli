@@ -1117,6 +1117,249 @@ func TestAbsenceCommentCommandE2E(t *testing.T) {
 	}
 }
 
+func TestAbsenceReadCommandE2E(t *testing.T) {
+	var requestedPath string
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.Path != "/abcenses/51744722" {
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.String())
+		}
+		requestedPath = r.URL.Path
+		_, _ = io.WriteString(w, `{"abcense":{"id":51744722,"status":"open","user":24352445,"abcensetype":18423477,"startdate":"2026-02-20","starttime":"","enddate":"2026-02-20","endtime":"","dayamount":1,"absence_hours":7.5,"description":"sick leave"}}`)
+	}))
+	t.Cleanup(server.Close)
+
+	configPath := filepath.Join(t.TempDir(), "config.json")
+	t.Setenv(config.EnvConfigPath, configPath)
+	cfg := config.New()
+	cfg.APIBaseURL = server.URL
+	cfg.Token.AccessToken = "token-absence-read"
+	if err := config.Save(configPath, cfg); err != nil {
+		t.Fatalf("save config failed: %v", err)
+	}
+
+	code, out, errOut := runCLI(t, []string{"absence", "read", "--id", "51744722", "--format", "json"})
+	if code != 0 {
+		t.Fatalf("absence read failed code=%d stderr=%q", code, errOut)
+	}
+	if strings.TrimSpace(errOut) != "" {
+		t.Fatalf("expected empty stderr, got %q", errOut)
+	}
+	if requestedPath != "/abcenses/51744722" {
+		t.Fatalf("unexpected requested path: %q", requestedPath)
+	}
+
+	var result cliJSONResult
+	if err := json.Unmarshal([]byte(out), &result); err != nil {
+		t.Fatalf("decode absence read result failed: %v\noutput=%s", err, out)
+	}
+	if !result.OK || result.Command != "absence read" {
+		t.Fatalf("unexpected command result: %#v", result)
+	}
+	if toInt64(result.Data["id"]) != 51744722 {
+		t.Fatalf("expected id=51744722, got %#v", result.Data["id"])
+	}
+	item, ok := result.Data["item"].(map[string]any)
+	if !ok {
+		t.Fatalf("missing item payload: %#v", result.Data["item"])
+	}
+	if getString(item, "description") != "sick leave" {
+		t.Fatalf("expected description=sick leave, got %#v", item["description"])
+	}
+	if toInt64(result.Data["total_minutes"]) != 450 {
+		t.Fatalf("expected total_minutes=450, got %#v", result.Data["total_minutes"])
+	}
+}
+
+func TestAbsenceAddCommandUsesCacheUserFallbackE2E(t *testing.T) {
+	var addPayload map[string]any
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost || r.URL.Path != "/abcenses" {
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.String())
+		}
+		if err := json.NewDecoder(r.Body).Decode(&addPayload); err != nil {
+			t.Fatalf("decode absence add payload failed: %v", err)
+		}
+		_, _ = io.WriteString(w, `{"abcense":{"id":51744799,"status":"open","user":24352445,"abcensetype":18423477,"startdate":"2026-02-20","enddate":"2026-02-20","description":"initial note"}}`)
+	}))
+	t.Cleanup(server.Close)
+
+	configPath := filepath.Join(t.TempDir(), "config.json")
+	cachePath := filepath.Join(t.TempDir(), "cache.json")
+	t.Setenv(config.EnvConfigPath, configPath)
+	t.Setenv(config.EnvCachePath, cachePath)
+	cfg := config.New()
+	cfg.APIBaseURL = server.URL
+	cfg.Token.AccessToken = "token-absence-add"
+	if err := config.Save(configPath, cfg); err != nil {
+		t.Fatalf("save config failed: %v", err)
+	}
+	cache := config.NewCache()
+	cache.User.ID = 24352445
+	if err := config.SaveCache(cachePath, cache); err != nil {
+		t.Fatalf("save cache failed: %v", err)
+	}
+
+	code, out, errOut := runCLI(t, []string{
+		"absence", "add",
+		"--type", "18423477",
+		"--from", "2026-02-20",
+		"--to", "2026-02-20",
+		"--description", "initial note",
+		"--format", "json",
+	})
+	if code != 0 {
+		t.Fatalf("absence add failed code=%d stderr=%q", code, errOut)
+	}
+	if strings.TrimSpace(errOut) != "" {
+		t.Fatalf("expected empty stderr, got %q", errOut)
+	}
+
+	absencePayload, ok := addPayload["abcense"].(map[string]any)
+	if !ok {
+		t.Fatalf("missing abcense payload: %#v", addPayload)
+	}
+	if toInt64(absencePayload["user"]) != 24352445 {
+		t.Fatalf("expected fallback user=24352445, got %#v", absencePayload["user"])
+	}
+	if toInt64(absencePayload["abcensetype"]) != 18423477 {
+		t.Fatalf("expected type 18423477, got %#v", absencePayload["abcensetype"])
+	}
+	if getString(absencePayload, "startdate") != "2026-02-20" || getString(absencePayload, "enddate") != "2026-02-20" {
+		t.Fatalf("unexpected start/end dates: %#v", absencePayload)
+	}
+	if getString(absencePayload, "description") != "initial note" {
+		t.Fatalf("unexpected description in add payload: %#v", absencePayload["description"])
+	}
+
+	var result cliJSONResult
+	if err := json.Unmarshal([]byte(out), &result); err != nil {
+		t.Fatalf("decode absence add result failed: %v\noutput=%s", err, out)
+	}
+	if !result.OK || result.Command != "absence add" {
+		t.Fatalf("unexpected command result: %#v", result)
+	}
+	if toInt64(result.Data["id"]) != 51744799 {
+		t.Fatalf("expected created id=51744799, got %#v", result.Data["id"])
+	}
+}
+
+func TestAbsenceUpdateCommandE2E(t *testing.T) {
+	var getCalled bool
+	var updatePayload map[string]any
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/abcenses/51744722":
+			getCalled = true
+			_, _ = io.WriteString(w, `{"abcense":{"id":51744722,"status":"open","user":24352445,"abcensetype":18423477,"startdate":"2026-02-20","starttime":"","enddate":"2026-02-20","endtime":"","dayamount":1,"absence_hours":7.5,"description":"initial note","row_info":{"status":"normal"}}}`)
+		case r.Method == http.MethodPut && r.URL.Path == "/abcenses/51744722":
+			if err := json.NewDecoder(r.Body).Decode(&updatePayload); err != nil {
+				t.Fatalf("decode absence update payload failed: %v", err)
+			}
+			_, _ = io.WriteString(w, `{"abcense":{"id":51744722,"status":"open","user":24352445,"abcensetype":18423477,"startdate":"2026-02-20","starttime":"","enddate":"2026-02-20","endtime":"","dayamount":1,"absence_hours":7.5,"description":"sick leave"}}`)
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.String())
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	configPath := filepath.Join(t.TempDir(), "config.json")
+	t.Setenv(config.EnvConfigPath, configPath)
+	cfg := config.New()
+	cfg.APIBaseURL = server.URL
+	cfg.Token.AccessToken = "token-absence-update"
+	if err := config.Save(configPath, cfg); err != nil {
+		t.Fatalf("save config failed: %v", err)
+	}
+
+	code, out, errOut := runCLI(t, []string{
+		"absence", "update",
+		"--id", "51744722",
+		"--description", "sick leave",
+		"--format", "json",
+	})
+	if code != 0 {
+		t.Fatalf("absence update failed code=%d stderr=%q", code, errOut)
+	}
+	if strings.TrimSpace(errOut) != "" {
+		t.Fatalf("expected empty stderr, got %q", errOut)
+	}
+	if !getCalled {
+		t.Fatalf("expected update to fetch existing absence before PUT")
+	}
+
+	updated, ok := updatePayload["abcense"].(map[string]any)
+	if !ok {
+		t.Fatalf("missing abcense payload: %#v", updatePayload)
+	}
+	if toInt64(updated["id"]) != 51744722 {
+		t.Fatalf("expected id=51744722 in update payload, got %#v", updated["id"])
+	}
+	if toInt64(updated["abcensetype"]) != 18423477 {
+		t.Fatalf("expected preserved abcensetype=18423477, got %#v", updated["abcensetype"])
+	}
+	if getString(updated, "description") != "sick leave" {
+		t.Fatalf("expected updated description=sick leave, got %#v", updated["description"])
+	}
+
+	var result cliJSONResult
+	if err := json.Unmarshal([]byte(out), &result); err != nil {
+		t.Fatalf("decode absence update result failed: %v\noutput=%s", err, out)
+	}
+	if !result.OK || result.Command != "absence update" {
+		t.Fatalf("unexpected command result: %#v", result)
+	}
+	if toInt64(result.Data["id"]) != 51744722 {
+		t.Fatalf("expected result id=51744722, got %#v", result.Data["id"])
+	}
+}
+
+func TestAbsenceDeleteCommandE2E(t *testing.T) {
+	var deleteCalled bool
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodDelete || r.URL.Path != "/abcenses/51744722" {
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.String())
+		}
+		deleteCalled = true
+		_, _ = io.WriteString(w, `{"removed":true}`)
+	}))
+	t.Cleanup(server.Close)
+
+	configPath := filepath.Join(t.TempDir(), "config.json")
+	t.Setenv(config.EnvConfigPath, configPath)
+	cfg := config.New()
+	cfg.APIBaseURL = server.URL
+	cfg.Token.AccessToken = "token-absence-delete"
+	if err := config.Save(configPath, cfg); err != nil {
+		t.Fatalf("save config failed: %v", err)
+	}
+
+	code, out, errOut := runCLI(t, []string{"absence", "delete", "--id", "51744722", "--format", "json"})
+	if code != 0 {
+		t.Fatalf("absence delete failed code=%d stderr=%q", code, errOut)
+	}
+	if strings.TrimSpace(errOut) != "" {
+		t.Fatalf("expected empty stderr, got %q", errOut)
+	}
+	if !deleteCalled {
+		t.Fatalf("expected DELETE /abcenses/51744722 call")
+	}
+
+	var result cliJSONResult
+	if err := json.Unmarshal([]byte(out), &result); err != nil {
+		t.Fatalf("decode absence delete result failed: %v\noutput=%s", err, out)
+	}
+	if !result.OK || result.Command != "absence delete" {
+		t.Fatalf("unexpected command result: %#v", result)
+	}
+	if toInt64(result.Data["id"]) != 51744722 {
+		t.Fatalf("expected deleted id=51744722, got %#v", result.Data["id"])
+	}
+}
+
 func TestAbsenceOptionsCommandE2E(t *testing.T) {
 	var requestedTypesQuery url.Values
 	var requestedUsersQuery url.Values

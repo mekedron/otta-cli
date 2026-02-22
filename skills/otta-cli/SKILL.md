@@ -92,6 +92,37 @@ otta absence browse \
   --format json
 ```
 
+Read one absence by id:
+
+```bash
+otta absence read --id <absence-id> --format json
+```
+
+Add absence:
+
+```bash
+otta absence add \
+  --type <absence-type-id> \
+  --from 2026-02-20 \
+  --to 2026-02-20 \
+  --description "sick leave" \
+  --format json
+```
+
+- `--user` is optional if `OTTA_CLI_USER_ID` or cached user ID exists.
+
+Update absence:
+
+```bash
+otta absence update --id <absence-id> --description "sick leave" --format json
+```
+
+Delete absence:
+
+```bash
+otta absence delete --id <absence-id> --format json
+```
+
 Fetch current cumulative saldo:
 
 ```bash

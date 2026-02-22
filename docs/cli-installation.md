@@ -57,6 +57,9 @@ $OTTA_BIN --help
 $OTTA_BIN config path
 $OTTA_BIN config cache-path
 $OTTA_BIN absence browse --from 2026-02-01 --to 2026-02-28 --format json
+$OTTA_BIN absence options --format json
+$OTTA_BIN absence add --type <absence-type-id> --from 2026-02-20 --to 2026-02-20 --description "sick leave" --format json
+$OTTA_BIN absence read --id <absence-id> --format json
 $OTTA_BIN calendar overview --from 2026-02-01 --to 2026-02-28 --format json
 $OTTA_BIN calendar detailed --from 2026-02-01 --to 2026-02-28 --format json --duration-format hours
 ```

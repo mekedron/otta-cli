@@ -17,9 +17,7 @@ For scriptability, command output is deterministic.
   - `calendar overview`
   - `calendar detailed`
   - `holidays`
-  - `absence options`
-  - `absence browse`
-  - `absence comment`
+  - all `absence` subcommands (`options`, `browse`, `read`, `add`, `update`, `delete`, `comment`)
 - CSV mode is available only for `worktimes report --format csv`
 - `--json` exists as a deprecated alias for `--format json`
 
@@ -101,6 +99,24 @@ Example (`absence browse`, excerpt):
       "minutes": 450,
       "value": 7.5,
       "text": "7.50 hours"
+    }
+  }
+}
+```
+
+Example (`absence add`, excerpt):
+
+```json
+{
+  "ok": true,
+  "command": "absence add",
+  "data": {
+    "id": 51744722,
+    "raw": {
+      "abcense": {
+        "id": 51744722,
+        "status": "open"
+      }
     }
   }
 }

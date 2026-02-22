@@ -15,6 +15,10 @@ const quickCommands = [
   'otta calendar overview --from 2026-02-01 --to 2026-02-28 --format json',
   'otta absence browse --from 2026-02-01 --to 2026-02-28 --format json',
   'otta absence options --format json',
+  'otta absence add --type <absence-type-id> --from 2026-02-20 --to 2026-02-20 --description "sick leave" --format json',
+  'otta absence read --id <absence-id> --format json',
+  'otta absence update --id <absence-id> --description "sick leave" --format json',
+  'otta absence delete --id <absence-id> --format json',
   'otta absence comment --type sick --from 2026-02-20 --to 2026-02-20 --format json',
   'otta holidays --from 2026-02-20 --to 2026-02-20 --worktimegroup <id> --format json',
 ];
@@ -38,7 +42,7 @@ const highlights = [
   {
     title: 'Timesheet Operations',
     description:
-      'List, browse, report, inspect selectable options, add, update, and delete worktime entries plus run unified calendar overview with deterministic --format output.',
+      'List, browse, report, inspect selectable options, and manage full worktime + absence CRUD flows with deterministic --format output.',
   },
   {
     title: 'Automation Friendly',
@@ -50,7 +54,7 @@ const highlights = [
 const docLinks = [
   {to: '/docs/cli-installation', label: 'Installation', summary: 'Build and run locally, set paths, and bootstrap env vars.'},
   {to: '/docs/cli-auth', label: 'Authentication', summary: 'Credential flow, token handling, and security notes.'},
-  {to: '/docs/cli-timesheets', label: 'Time Tracking', summary: 'Worktime list/browse/report/CRUD, absence browse, holidays retrieval, and calendar overview.'},
+  {to: '/docs/cli-timesheets', label: 'Time Tracking', summary: 'Worktime list/browse/report/CRUD, absence browse/read/add/update/delete, holidays retrieval, and calendar overview.'},
   {to: '/docs/cli-output-contract', label: 'Output Contract', summary: 'JSON envelope shape and scriptability guarantees.'},
 ];
 

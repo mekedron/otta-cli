@@ -11,7 +11,7 @@ It is intended for Finnish time tracking use cases.
 - worktime commands (`list/browse/report/options/add/update/delete`)
 - calendar commands (`overview/detailed`)
 - holidays retrieval command
-- absence commands (`options/browse/comment`)
+- absence commands (`options/browse/read/add/update/delete/comment`)
 - configurable local config path
 - separate cache file for API-derived user metadata
 - environment variable credential overrides (Docker/CI friendly)
@@ -74,7 +74,11 @@ otta saldo --format json
 otta holidays --from 2026-02-20 --to 2026-02-20 --worktimegroup <id> --format json
 otta absence browse --from 2026-02-01 --to 2026-02-28 --format json
 otta absence options --format json
-otta absence comment --type sick --from 2026-02-20 --to 2026-02-20
+otta absence add --type <absence-type-id> --from 2026-02-20 --to 2026-02-20 --description "sick leave" --format json
+otta absence read --id <absence-id> --format json
+otta absence update --id <absence-id> --description "sick leave" --format json
+otta absence delete --id <absence-id> --format json
+otta absence comment --type sick --from 2026-02-20 --to 2026-02-20 --format json
 ```
 
 Important: `worktimes list/browse/report` return only worktime rows and do not include absences.
@@ -133,7 +137,7 @@ Credential env vars:
 - `OTTA_CLI_TOKEN_TYPE`
 - `OTTA_CLI_REFRESH_TOKEN`
 - `OTTA_CLI_TOKEN_SCOPE`
-- `OTTA_CLI_USER_ID` (optional convenience for `worktimes add` and `saldo`)
+- `OTTA_CLI_USER_ID` (optional convenience for `worktimes add`, `absence add`, and `saldo`)
 - `OTTA_CLI_WORKTIMEGROUP_ID` (optional convenience for `holidays`, `calendar overview`, and `calendar detailed`)
 
 ## Test and Lint

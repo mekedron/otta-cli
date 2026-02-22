@@ -19,6 +19,10 @@ func newAbsenceCommand() *cobra.Command {
 
 	absenceCmd.AddCommand(newAbsenceOptionsCommand())
 	absenceCmd.AddCommand(newAbsenceBrowseCommand())
+	absenceCmd.AddCommand(newAbsenceReadCommand())
+	absenceCmd.AddCommand(newAbsenceAddCommand())
+	absenceCmd.AddCommand(newAbsenceUpdateCommand())
+	absenceCmd.AddCommand(newAbsenceDeleteCommand())
 	absenceCmd.AddCommand(newAbsenceCommentCommand())
 
 	return absenceCmd

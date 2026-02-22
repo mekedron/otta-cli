@@ -46,6 +46,10 @@ otta status
 - `otta holidays`: fetch workday calendar/holiday rows.
 - `otta absence options`: fetch absence type/user options.
 - `otta absence browse`: aggregate absence entries across a date range.
+- `otta absence read`: fetch one absence row by id.
+- `otta absence add`: create an absence row.
+- `otta absence update`: update an existing absence row.
+- `otta absence delete`: delete an absence row.
 - `otta absence comment`: generate absence comment text.
 
 Important: `worktimes list/browse/report` do not return absences.
@@ -75,7 +79,12 @@ otta status --format json
 otta worktimes options --date 2026-02-20 --format json
 otta saldo --format json
 otta worktimes list --date 2026-02-20 --format json
+otta absence options --format json
 otta absence browse --from 2026-02-01 --to 2026-02-28 --format json
+otta absence add --type <absence-type-id> --from 2026-02-20 --to 2026-02-20 --description "sick leave" --format json
+otta absence read --id <absence-id> --format json
+otta absence update --id <absence-id> --description "sick leave" --format json
+otta absence delete --id <absence-id> --format json
 otta calendar overview --from 2026-02-01 --to 2026-02-28 --format json
 otta calendar detailed --from 2026-02-01 --to 2026-02-28 --format json
 ```
@@ -91,4 +100,4 @@ A real terminal E2E sweep was run on 2026-02-22 against the live API, covering:
 - calendar overview
 - calendar detailed
 - holidays
-- absence options/browse/comment
+- absence options/browse/read/add/update/delete/comment

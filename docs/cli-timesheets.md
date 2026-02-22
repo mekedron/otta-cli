@@ -172,6 +172,57 @@ Optional API filter for absence type mode:
 otta absence options --type days --format json
 ```
 
+Add an absence row (required: `--type`, plus resolved user):
+
+```bash
+otta absence add \
+  --type <absence-type-id> \
+  --from 2026-02-20 \
+  --to 2026-02-20 \
+  --description "sick leave" \
+  --format json
+```
+
+If `--user` is omitted in `absence add`, fallback order is:
+
+- `OTTA_CLI_USER_ID`
+- cached user profile (`~/.otta-cli/cache.json` by default)
+
+Read one absence row by id:
+
+```bash
+otta absence read --id <absence-id> --format json
+```
+
+Update an absence row:
+
+```bash
+otta absence update --id <absence-id> --description "sick leave" --format json
+```
+
+Delete an absence row:
+
+```bash
+otta absence delete --id <absence-id> --format json
+```
+
+Minimal absence CRUD smoke flow (date used in live validation):
+
+```bash
+DATE=2026-02-20
+
+# 1) Resolve type id
+otta absence options --format json
+
+# 2) Create one row (fill <absence-type-id>)
+otta absence add --type <absence-type-id> --from "$DATE" --to "$DATE" --description "tmp-smoke" --format json
+
+# 3) Read/update/delete (replace <absence-id>)
+otta absence read --id <absence-id> --format json
+otta absence update --id <absence-id> --description "sick leave" --format json
+otta absence delete --id <absence-id> --format json
+```
+
 Generate unified calendar overview (worktimes + absences + holidays):
 
 ```bash
