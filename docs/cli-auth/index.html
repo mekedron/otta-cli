@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="generator" content="Docusaurus v3.9.2">
 <title data-rh="true">Authentication | otta-cli</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:url" content="https://mekedron.github.io/otta-cli/docs/cli-auth"><meta data-rh="true" property="og:locale" content="en"><meta data-rh="true" name="docusaurus_locale" content="en"><meta data-rh="true" name="docsearch:language" content="en"><meta data-rh="true" name="docusaurus_version" content="current"><meta data-rh="true" name="docusaurus_tag" content="docs-default-current"><meta data-rh="true" name="docsearch:version" content="current"><meta data-rh="true" name="docsearch:docusaurus_tag" content="docs-default-current"><meta data-rh="true" property="og:title" content="Authentication | otta-cli"><meta data-rh="true" name="description" content="otta-cli authenticates against https"><meta data-rh="true" property="og:description" content="otta-cli authenticates against https"><link data-rh="true" rel="canonical" href="https://mekedron.github.io/otta-cli/docs/cli-auth"><link data-rh="true" rel="alternate" href="https://mekedron.github.io/otta-cli/docs/cli-auth" hreflang="en"><link data-rh="true" rel="alternate" href="https://mekedron.github.io/otta-cli/docs/cli-auth" hreflang="x-default"><script data-rh="true" type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Authentication","item":"https://mekedron.github.io/otta-cli/docs/cli-auth"}]}</script><link rel="stylesheet" href="/otta-cli/assets/css/styles.82da1678.css">
-<script src="/otta-cli/assets/js/runtime~main.9ff9c67c.js" defer="defer"></script>
+<script src="/otta-cli/assets/js/runtime~main.f24d7bb7.js" defer="defer"></script>
 <script src="/otta-cli/assets/js/main.e83894b0.js" defer="defer"></script>
 </head>
 <body class="navigation-with-keyboard">
@@ -39,7 +39,7 @@
 <p><code>otta auth login</code> stores credentials/token in local config.
 API-derived profile data is stored in a separate cache file.
 <code>otta status</code> refreshes cached user metadata (<code>user.id</code>, <code>worktimegroup_id</code>) used by
-<code>worktimes add</code>, <code>holidays</code>, and <code>calendar overview</code> fallback resolution.</p>
+<code>worktimes add</code>, <code>holidays</code>, <code>calendar overview</code>, and <code>calendar detailed</code> fallback resolution.</p>
 <p>Any authenticated command uses silent token renewal when possible:</p>
 <ul>
 <li class="">pre-request renewal when <code>token.expires_at</code> is near/past expiry</li>
