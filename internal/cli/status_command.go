@@ -20,6 +20,10 @@ func newStatusCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			durationFormat, err := resolveDurationFormat(cmd)
+			if err != nil {
+				return err
+			}
 
 			configPath := config.ResolvePath()
 			cfg, err := loadRuntimeConfig(configPath)
@@ -61,12 +65,13 @@ func newStatusCommand() *cobra.Command {
 					OK:      true,
 					Command: "status",
 					Data: map[string]any{
-						"config_path":   configPath,
-						"cache_path":    cachePath,
-						"user":          cache.User,
-						"token_expires": cfg.Token.ExpiresAt,
-						"entries_today": count,
-						"raw":           raw,
+						"config_path":     configPath,
+						"cache_path":      cachePath,
+						"user":            cache.User,
+						"token_expires":   cfg.Token.ExpiresAt,
+						"entries_today":   count,
+						"duration_format": durationFormat,
+						"raw":             raw,
 					},
 				}
 				return writeJSON(cmd, payload)

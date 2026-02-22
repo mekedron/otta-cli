@@ -11,6 +11,7 @@ func newCalendarCommand() *cobra.Command {
 		},
 	}
 
+	calendarCmd.AddCommand(newCalendarDetailedCommand())
 	calendarCmd.AddCommand(newCalendarOverviewCommand())
 	return calendarCmd
 }

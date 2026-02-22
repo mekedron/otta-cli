@@ -12,8 +12,10 @@ For scriptability, command output is deterministic.
 - JSON mode with `--format json` is available on:
   - `auth login`
   - `status`
+  - `saldo`
   - all `worktimes` subcommands
   - `calendar overview`
+  - `calendar detailed`
   - `holidays`
   - `absence options`
   - `absence browse`
@@ -31,6 +33,21 @@ For scriptability, command output is deterministic.
 - top-level object: `ok`, `command`, `data`
 - `data` fields are command-specific
 - raw API payload is included where API schemas vary by tenant
+- `worktimes list/browse/report` payloads are worktime-only and never include absences
+- use `absence browse` or `calendar detailed/overview` when absence-aware schedule output is needed
+- minute-based read commands support global `--duration-format` (`minutes|hours|days|hhmm`)
+- duration conversion basis for `days` is fixed: `1 day = 24h = 1440 minutes`
+
+## Duration Fields
+
+When a command includes minute totals, JSON responses include:
+
+- `duration_format`: normalized selected format
+- duration summary objects (for example `total_duration`, `worktime_duration`, `absence_duration`, or `durations.*`) with:
+  - `format`
+  - `minutes` (raw canonical value)
+  - `value` (converted value)
+  - `text` (human-readable representation)
 
 Example (`worktimes list`):
 
@@ -77,7 +94,14 @@ Example (`absence browse`, excerpt):
     "to": "2026-02-28",
     "days": 28,
     "count": 1,
-    "total_minutes": 450
+    "total_minutes": 450,
+    "duration_format": "hours",
+    "total_duration": {
+      "format": "hours",
+      "minutes": 450,
+      "value": 7.5,
+      "text": "7.50 hours"
+    }
   }
 }
 ```
@@ -95,6 +119,45 @@ Example (`calendar overview`, excerpt):
     "totals": {
       "worktime_hours": 105,
       "absence_hours": 7.5
+    }
+  }
+}
+```
+
+Example (`calendar detailed`, excerpt):
+
+```json
+{
+  "ok": true,
+  "command": "calendar detailed",
+  "data": {
+    "from": "2026-02-01",
+    "to": "2026-02-28",
+    "worktime_group_id": 17910737,
+    "totals": {
+      "day_off_days": 8,
+      "celebration_days": 0
+    }
+  }
+}
+```
+
+Example (`saldo`, excerpt):
+
+```json
+{
+  "ok": true,
+  "command": "saldo",
+  "data": {
+    "user_id": 24352445,
+    "from": "2024-09-01",
+    "to": "2026-02-21",
+    "cumulative_saldo_minutes": 1463,
+    "cumulative_saldo_duration": {
+      "format": "hours",
+      "minutes": 1463,
+      "value": 24.3833,
+      "text": "24.38 hours"
     }
   }
 }

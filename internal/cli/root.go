@@ -33,9 +33,14 @@ func NewRootCommand(version string) *cobra.Command {
 			}
 			return cmd.Help()
 		},
+		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+			_, err := resolveDurationFormat(cmd)
+			return err
+		},
 	}
 
 	root.Flags().BoolP("version", "v", false, "Show CLI version and exit.")
+	root.PersistentFlags().String("duration-format", durationFormatMinutes, "Duration format for minute-based values: minutes, hours, days, hhmm.")
 	root.SetHelpCommand(&cobra.Command{Hidden: true})
 	defaultHelpFunc := root.HelpFunc()
 	root.SetHelpFunc(func(cmd *cobra.Command, args []string) {
@@ -47,6 +52,7 @@ func NewRootCommand(version string) *cobra.Command {
 	})
 
 	root.AddCommand(newStatusCommand())
+	root.AddCommand(newSaldoCommand())
 	root.AddCommand(newConfigCommand())
 	root.AddCommand(newAuthCommand())
 	root.AddCommand(newWorktimesCommand())
@@ -76,6 +82,9 @@ func renderRootHelp(out io.Writer, root *cobra.Command) {
 	_, _ = fmt.Fprintln(out, "notes:")
 	_, _ = fmt.Fprintln(out, "  - options are optional unless marked [required].")
 	_, _ = fmt.Fprintln(out, "  - use --format json on data commands for machine-readable output.")
+	_, _ = fmt.Fprintln(out, "  - use --duration-format minutes|hours|days|hhmm for converted totals.")
+	_, _ = fmt.Fprintln(out, "  - worktimes commands return only worktime rows (no absences).")
+	_, _ = fmt.Fprintln(out, "  - for full schedule checks, prefer calendar detailed/overview.")
 	_, _ = fmt.Fprintln(out)
 	_, _ = fmt.Fprintln(out, "full reference:")
 	emitReference(out, root, root.Name())

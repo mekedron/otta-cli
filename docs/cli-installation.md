@@ -58,7 +58,11 @@ $OTTA_BIN config path
 $OTTA_BIN config cache-path
 $OTTA_BIN absence browse --from 2026-02-01 --to 2026-02-28 --format json
 $OTTA_BIN calendar overview --from 2026-02-01 --to 2026-02-28 --format json
+$OTTA_BIN calendar detailed --from 2026-02-01 --to 2026-02-28 --format json --duration-format hours
 ```
+
+Note: `worktimes` commands are worktime-only and do not return absences.
+Minute-based read commands support `--duration-format minutes|hours|days|hhmm`.
 
 ## Next Steps
 

@@ -28,6 +28,10 @@ func newAbsenceBrowseCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			durationFormat, err := resolveDurationFormat(cmd)
+			if err != nil {
+				return err
+			}
 
 			fromDate, toDate, err := parseWorktimesDateRange(dateFrom, dateTo)
 			if err != nil {
@@ -54,15 +58,17 @@ func newAbsenceBrowseCommand() *cobra.Command {
 					OK:      true,
 					Command: "absence browse",
 					Data: map[string]any{
-						"from":          report.From,
-						"to":            report.To,
-						"days":          report.Days,
-						"count":         report.Count,
-						"total_minutes": report.TotalMinutes,
-						"total_hours":   report.TotalHours,
-						"items":         report.Items,
-						"responses":     report.Responses,
-						"raw":           report.Raw,
+						"from":            report.From,
+						"to":              report.To,
+						"days":            report.Days,
+						"count":           report.Count,
+						"total_minutes":   report.TotalMinutes,
+						"total_hours":     report.TotalHours,
+						"duration_format": durationFormat,
+						"total_duration":  durationSummary(report.TotalMinutes, durationFormat),
+						"items":           report.Items,
+						"responses":       report.Responses,
+						"raw":             report.Raw,
 					},
 				})
 			}
@@ -73,6 +79,7 @@ func newAbsenceBrowseCommand() *cobra.Command {
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "entries: %d\n", report.Count)
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "total_minutes: %d\n", report.TotalMinutes)
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "total_hours: %.2f\n", report.TotalHours)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "total_duration: %s\n", formatDurationForText(report.TotalMinutes, durationFormat))
 			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "use --format json for full payload")
 			return nil
 		},

@@ -1,6 +1,6 @@
 ---
 name: otta-cli
-description: "Use `otta-cli` to automate `otta.fi` workflows from terminal. This tool is usually used for tracking working time, absences, and sick leaves: authenticate, inspect config/cache, check account status, manage worktimes (list/add/update/delete), browse absences, fetch holidays, and generate combined calendar overviews. Trigger this skill when a request needs CLI-first Otta operations, `OTTA_CLI_*` environment setup, machine-readable `--format json` output, or diagnosis of auth/config/API validation errors."
+description: "Use `otta-cli` to automate `otta.fi` workflows from terminal. This tool is usually used for tracking working time, absences, and sick leaves: authenticate, inspect config/cache, check account status, manage worktimes (list/add/update/delete), browse absences, fetch holidays, and generate combined/detailed calendar reports. Trigger this skill when a request needs CLI-first Otta operations, `OTTA_CLI_*` environment setup, machine-readable `--format json` output, or diagnosis of auth/config/API validation errors."
 ---
 
 # Otta CLI
@@ -92,6 +92,12 @@ otta absence browse \
   --format json
 ```
 
+Fetch current cumulative saldo:
+
+```bash
+otta saldo --format json
+```
+
 Generate combined calendar overview:
 
 ```bash
@@ -100,6 +106,25 @@ otta calendar overview \
   --to 2026-02-28 \
   --format json
 ```
+
+Generate detailed calendar day-by-day report:
+
+```bash
+otta calendar detailed \
+  --from 2026-02-01 \
+  --to 2026-02-28 \
+  --format json
+```
+
+Use alternate duration units when totals are minute-based:
+
+```bash
+otta calendar detailed --from 2026-02-01 --to 2026-02-28 --format json --duration-format hours
+otta worktimes browse --from 2026-02-01 --to 2026-02-28 --format json --duration-format days
+```
+
+- `--duration-format` values: `minutes` (default), `hours`, `days`, `hhmm`
+- day conversion is fixed at `1 day = 24h = 1440 minutes`
 
 Generate absence comment text:
 
@@ -132,11 +157,14 @@ Use these variables when running in CI/non-interactive environments:
 ## Agent Operating Rules
 
 1. Prefer `--format json` for all data-producing commands and parse response fields instead of scraping text output.
-2. Run `status --format json` before operations that rely on cached user/worktimegroup metadata.
-3. Validate dates/times before command execution (`YYYY-MM-DD`, `HH:MM`).
-4. Run `worktimes list` before `update` or `delete` when IDs are not explicitly known.
-5. Return exact command, exit code, and concise stderr message when failures happen.
-6. Never print raw credentials or tokens in summaries.
+2. `worktimes list/browse/report` are worktime-only and never include absences; do not infer absences from empty worktime rows.
+3. For user schedule checks/log interpretation, prefer `calendar detailed --format json` first; use `calendar overview` as lighter fallback.
+4. Use `--duration-format` when users request non-minute output; keep raw minute values for auditability.
+5. Run `status --format json` before operations that rely on cached user/worktimegroup metadata.
+6. Validate dates/times before command execution (`YYYY-MM-DD`, `HH:MM`).
+7. Run `worktimes list` before `update` or `delete` when IDs are not explicitly known.
+8. Return exact command, exit code, and concise stderr message when failures happen.
+9. Never print raw credentials or tokens in summaries.
 
 ## Failure Recovery
 

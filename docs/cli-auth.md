@@ -51,7 +51,7 @@ otta auth login --username <username> --password "$OTTA_CLI_PASSWORD"
 `otta auth login` stores credentials/token in local config.
 API-derived profile data is stored in a separate cache file.
 `otta status` refreshes cached user metadata (`user.id`, `worktimegroup_id`) used by
-`worktimes add`, `holidays`, and `calendar overview` fallback resolution.
+`worktimes add`, `holidays`, `calendar overview`, and `calendar detailed` fallback resolution.
 
 Any authenticated command uses silent token renewal when possible:
 

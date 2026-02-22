@@ -14,7 +14,7 @@ import (
 func newWorktimesCommand() *cobra.Command {
 	worktimesCmd := &cobra.Command{
 		Use:   "worktimes",
-		Short: "Collect and manage worktime entries.",
+		Short: "Collect and manage worktime entries (worktimes only, no absences).",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return cmd.Help()
 		},
@@ -42,9 +42,13 @@ func newWorktimesListCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "list",
-		Short: "List worktime entries for a date.",
+		Short: "List worktime entries for a date (no absences).",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			selectedFormat, err := resolveOutputFormat(cmd, outputFormat, outputFormatText, outputFormatJSON)
+			if err != nil {
+				return err
+			}
+			durationFormat, err := resolveDurationFormat(cmd)
 			if err != nil {
 				return err
 			}
@@ -78,20 +82,27 @@ func newWorktimesListCommand() *cobra.Command {
 			}
 
 			count := countList(raw, "worktimes", "items", "results")
+			rows := extractWorktimeRows(raw, date)
+			totalMinutes := sumWorktimeMinutes(rows)
 			if selectedFormat == outputFormatJSON {
 				return writeJSON(cmd, commandResult{
 					OK:      true,
 					Command: "worktimes list",
 					Data: map[string]any{
-						"date":  date,
-						"count": count,
-						"raw":   raw,
+						"date":            date,
+						"count":           count,
+						"total_minutes":   totalMinutes,
+						"duration_format": durationFormat,
+						"total_duration":  durationSummary(totalMinutes, durationFormat),
+						"raw":             raw,
 					},
 				})
 			}
 
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "date: %s\n", date)
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "entries: %d\n", count)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "total_duration: %s\n", formatDurationForText(totalMinutes, durationFormat))
+			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "note: this command returns worktimes only (no absences)")
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "use --format json for full payload\n")
 			return nil
 		},

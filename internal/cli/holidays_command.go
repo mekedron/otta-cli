@@ -25,6 +25,10 @@ func newHolidaysCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			durationFormat, err := resolveDurationFormat(cmd)
+			if err != nil {
+				return err
+			}
 
 			fromDate, err := parseISODate(dateFrom)
 			if err != nil {
@@ -74,25 +78,38 @@ func newHolidaysCommand() *cobra.Command {
 				return err
 			}
 
-			count := countList(raw, "workdaydays", "days", "items", "results")
+			rows := extractHolidayRows(raw)
+			count := len(rows)
+			holidayMinutes := sumHolidayDurationField(rows, "minutes")
+			absenceMinutes := sumHolidayDurationField(rows, "absence_minutes")
 			if selectedFormat == outputFormatJSON {
 				return writeJSON(cmd, commandResult{
 					OK:      true,
 					Command: "holidays",
 					Data: map[string]any{
-						"from":          dateFrom,
-						"to":            dateTo,
-						"worktimegroup": worktimeGroup,
-						"count":         count,
-						"raw":           raw,
+						"from":              dateFrom,
+						"to":                dateTo,
+						"worktimegroup":     worktimeGroup,
+						"worktime_group_id": worktimeGroup,
+						"count":             count,
+						"holiday_minutes":   holidayMinutes,
+						"absence_minutes":   absenceMinutes,
+						"duration_format":   durationFormat,
+						"holiday_duration":  durationSummary(holidayMinutes, durationFormat),
+						"absence_duration":  durationSummary(absenceMinutes, durationFormat),
+						"raw":               raw,
 					},
 				})
 			}
 
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "from: %s\n", dateFrom)
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "to: %s\n", dateTo)
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "worktimegroup: %d\n", worktimeGroup)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "worktime_group_id: %d\n", worktimeGroup)
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "days: %d\n", count)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "holiday_minutes: %d\n", holidayMinutes)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "holiday_duration: %s\n", formatDurationForText(holidayMinutes, durationFormat))
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "absence_minutes: %d\n", absenceMinutes)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "absence_duration: %s\n", formatDurationForText(absenceMinutes, durationFormat))
 			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "use --format json for response payload")
 			return nil
 		},
@@ -105,4 +122,16 @@ func newHolidaysCommand() *cobra.Command {
 	addOutputFormatFlags(cmd, &outputFormat, outputFormatText, outputFormatText, outputFormatJSON)
 
 	return cmd
+}
+
+func sumHolidayDurationField(rows []map[string]any, key string) int {
+	total := 0
+	for _, row := range rows {
+		value := int(toInt64(row[key]))
+		if value <= 0 {
+			continue
+		}
+		total += value
+	}
+	return total
 }

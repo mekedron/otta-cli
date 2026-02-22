@@ -22,9 +22,13 @@ func newWorktimesBrowseCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "browse",
-		Short: "Browse worktime entries across a date range.",
+		Short: "Browse worktime entries across a date range (no absences).",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			selectedFormat, err := resolveOutputFormat(cmd, outputFormat, outputFormatText, outputFormatJSON)
+			if err != nil {
+				return err
+			}
+			durationFormat, err := resolveDurationFormat(cmd)
 			if err != nil {
 				return err
 			}
@@ -54,13 +58,15 @@ func newWorktimesBrowseCommand() *cobra.Command {
 					OK:      true,
 					Command: "worktimes browse",
 					Data: map[string]any{
-						"from":          report.From,
-						"to":            report.To,
-						"days":          report.Days,
-						"count":         report.Count,
-						"total_minutes": report.TotalMinutes,
-						"items":         report.Items,
-						"responses":     report.Responses,
+						"from":            report.From,
+						"to":              report.To,
+						"days":            report.Days,
+						"count":           report.Count,
+						"total_minutes":   report.TotalMinutes,
+						"duration_format": durationFormat,
+						"total_duration":  durationSummary(report.TotalMinutes, durationFormat),
+						"items":           report.Items,
+						"responses":       report.Responses,
 					},
 				})
 			}
@@ -70,6 +76,8 @@ func newWorktimesBrowseCommand() *cobra.Command {
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "days: %d\n", report.Days)
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "entries: %d\n", report.Count)
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "total_minutes: %d\n", report.TotalMinutes)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "total_duration: %s\n", formatDurationForText(report.TotalMinutes, durationFormat))
+			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "note: this command returns worktimes only (no absences)")
 			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "use --format json for full payload")
 			return nil
 		},

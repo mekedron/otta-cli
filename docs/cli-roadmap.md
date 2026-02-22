@@ -8,6 +8,7 @@ sidebar_position: 6
 
 - Added `absence browse` range command (`/ttapi/absence/split`).
 - Added `calendar overview` combined day-by-day report (worktimes + absences + holidays).
+- Added `calendar detailed` full day-by-day report with day-off reasons and celebrations.
 
 ## Next
 

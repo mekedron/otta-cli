@@ -11,6 +11,15 @@ Before running these commands:
 
 ## Worktimes
 
+Important: `worktimes list`, `worktimes browse`, and `worktimes report` return only worktime rows.
+They do not include absences. Use `absence browse` or `calendar detailed` when schedule context matters.
+
+Duration display on read commands can be changed with global `--duration-format`:
+
+- supported formats: `minutes` (default), `hours`, `days`, `hhmm`
+- `days` uses fixed conversion `1 day = 24h = 1440 minutes`
+- for AI schedule analysis, prefer `calendar detailed --format json --duration-format <format>`
+
 Collect worktimes for a day:
 
 ```bash
@@ -122,6 +131,27 @@ Fallback order for `--worktimegroup`:
 - `OTTA_CLI_WORKTIMEGROUP_ID`
 - cached user profile (`~/.otta-cli/cache.json` by default)
 
+## Saldo
+
+Fetch current cumulative saldo:
+
+```bash
+otta saldo --format json
+```
+
+Optional explicit user id:
+
+```bash
+otta saldo --user <user-id> --format json
+```
+
+If `--user` is omitted in `saldo`, fallback order is:
+
+- `OTTA_CLI_USER_ID`
+- cached user profile (`~/.otta-cli/cache.json` by default)
+
+`saldo` also supports `--duration-format` for converted saldo output.
+
 ## Absences
 
 Browse absences across a date range (calendar-compatible split rows):
@@ -150,7 +180,15 @@ otta calendar overview --from 2026-02-01 --to 2026-02-28 --format json
 
 `calendar overview` returns one `items[]` row per day in range, including weekends and days without entries.
 
-If `--worktimegroup` is omitted for `calendar overview`, fallback order is:
+Generate detailed calendar view (day-by-day with events, day-off reasons, and celebrations):
+
+```bash
+otta calendar detailed --from 2026-02-01 --to 2026-02-28 --format json
+```
+
+For AI/automation schedule checks, prefer `calendar detailed --format json` first.
+
+If `--worktimegroup` is omitted for `calendar overview` or `calendar detailed`, fallback order is:
 
 - `OTTA_CLI_WORKTIMEGROUP_ID`
 - cached user profile (`~/.otta-cli/cache.json` by default)

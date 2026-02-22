@@ -80,6 +80,10 @@ func newCalendarOverviewCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			durationFormat, err := resolveDurationFormat(cmd)
+			if err != nil {
+				return err
+			}
 
 			fromDate, toDate, err := parseWorktimesDateRange(dateFrom, dateTo)
 			if err != nil {
@@ -123,14 +127,20 @@ func newCalendarOverviewCommand() *cobra.Command {
 					OK:      true,
 					Command: "calendar overview",
 					Data: map[string]any{
-						"from":          report.From,
-						"to":            report.To,
-						"days":          report.Days,
-						"worktimegroup": report.WorktimeGroup,
+						"from":              report.From,
+						"to":                report.To,
+						"days":              report.Days,
+						"worktimegroup":     report.WorktimeGroup,
+						"worktime_group_id": report.WorktimeGroup,
 						"filters": map[string]any{
 							"user":     strings.TrimSpace(user),
 							"order":    strings.TrimSpace(order),
 							"sideload": sideload,
+						},
+						"duration_format": durationFormat,
+						"durations": map[string]any{
+							"worktime": durationSummary(report.Totals.WorktimeMinutes, durationFormat),
+							"absence":  durationSummary(report.Totals.AbsenceMinutes, durationFormat),
 						},
 						"totals": report.Totals,
 						"items":  report.Items,
@@ -142,9 +152,11 @@ func newCalendarOverviewCommand() *cobra.Command {
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "from: %s\n", report.From)
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "to: %s\n", report.To)
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "days: %d\n", report.Days)
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "worktimegroup: %d\n", report.WorktimeGroup)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "worktime_group_id: %d\n", report.WorktimeGroup)
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "worktime_minutes: %d\n", report.Totals.WorktimeMinutes)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "worktime_duration: %s\n", formatDurationForText(report.Totals.WorktimeMinutes, durationFormat))
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "absence_minutes: %d\n", report.Totals.AbsenceMinutes)
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "absence_duration: %s\n", formatDurationForText(report.Totals.AbsenceMinutes, durationFormat))
 			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "holiday_rows: %d\n", report.Totals.HolidayCount)
 			_, _ = fmt.Fprintln(cmd.OutOrStdout(), "use --format json for full payload")
 			return nil

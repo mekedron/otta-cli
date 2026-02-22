@@ -21,9 +21,13 @@ func newWorktimesReportCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "report",
-		Short: "Generate worktime report in JSON or CSV.",
+		Short: "Generate worktime-only report in JSON or CSV (no absences).",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			selectedFormat, err := resolveOutputFormat(cmd, format, outputFormatJSON, outputFormatJSON, outputFormatCSV)
+			if err != nil {
+				return err
+			}
+			durationFormat, err := resolveDurationFormat(cmd)
 			if err != nil {
 				return err
 			}
@@ -56,13 +60,15 @@ func newWorktimesReportCommand() *cobra.Command {
 				OK:      true,
 				Command: "worktimes report",
 				Data: map[string]any{
-					"from":          report.From,
-					"to":            report.To,
-					"days":          report.Days,
-					"count":         report.Count,
-					"total_minutes": report.TotalMinutes,
-					"items":         report.Items,
-					"responses":     report.Responses,
+					"from":            report.From,
+					"to":              report.To,
+					"days":            report.Days,
+					"count":           report.Count,
+					"total_minutes":   report.TotalMinutes,
+					"duration_format": durationFormat,
+					"total_duration":  durationSummary(report.TotalMinutes, durationFormat),
+					"items":           report.Items,
+					"responses":       report.Responses,
 				},
 			})
 		},

@@ -7,8 +7,9 @@ It is intended for Finnish time tracking use cases.
 
 - auth command (`otta auth login`)
 - status check command (`otta status`)
+- cumulative saldo command (`otta saldo`)
 - worktime commands (`list/browse/report/options/add/update/delete`)
-- calendar overview command (`otta calendar overview`)
+- calendar commands (`overview/detailed`)
 - holidays retrieval command
 - absence commands (`options/browse/comment`)
 - configurable local config path
@@ -67,11 +68,33 @@ otta worktimes list --date 2026-02-20
 otta worktimes browse --from 2026-02-20 --to 2026-02-26 --format json
 otta worktimes report --from 2026-02-01 --to 2026-02-28 --format csv
 otta calendar overview --from 2026-02-01 --to 2026-02-28 --format json
+otta calendar detailed --from 2026-02-01 --to 2026-02-28 --format json
 otta worktimes options --date 2026-02-20 --format json
+otta saldo --format json
 otta holidays --from 2026-02-20 --to 2026-02-20 --worktimegroup <id> --format json
 otta absence browse --from 2026-02-01 --to 2026-02-28 --format json
 otta absence options --format json
 otta absence comment --type sick --from 2026-02-20 --to 2026-02-20
+```
+
+Important: `worktimes list/browse/report` return only worktime rows and do not include absences.
+For full day-by-day schedule checks (worktimes + absences + holidays/day-off signals), prefer:
+
+```bash
+otta calendar detailed --from 2026-02-01 --to 2026-02-28 --format json
+```
+
+Duration conversion on read commands:
+
+- Global flag: `--duration-format` with values `minutes` (default), `hours`, `days`, `hhmm`
+- Works across read commands that expose minute totals (`worktimes`, `absence browse`, `saldo`, `holidays`, `calendar overview`, `calendar detailed`)
+- Day conversion uses a fixed basis: `1 day = 24 hours = 1440 minutes`
+- Example:
+
+```bash
+otta calendar detailed --from 2026-02-01 --to 2026-02-28 --duration-format hours
+otta worktimes browse --from 2026-02-01 --to 2026-02-28 --format json --duration-format days
+otta absence browse --from 2026-02-01 --to 2026-02-28 --format json --duration-format hhmm
 ```
 
 For non-interactive scripts, prefer stdin or env secrets to reduce shell history exposure:
@@ -110,8 +133,8 @@ Credential env vars:
 - `OTTA_CLI_TOKEN_TYPE`
 - `OTTA_CLI_REFRESH_TOKEN`
 - `OTTA_CLI_TOKEN_SCOPE`
-- `OTTA_CLI_USER_ID` (optional convenience for `worktimes add`)
-- `OTTA_CLI_WORKTIMEGROUP_ID` (optional convenience for `holidays` and `calendar overview`)
+- `OTTA_CLI_USER_ID` (optional convenience for `worktimes add` and `saldo`)
+- `OTTA_CLI_WORKTIMEGROUP_ID` (optional convenience for `holidays`, `calendar overview`, and `calendar detailed`)
 
 ## Test and Lint
 

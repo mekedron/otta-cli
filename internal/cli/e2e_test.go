@@ -966,6 +966,136 @@ func TestHolidaysCommandUsesCacheWorktimegroupFallbackE2E(t *testing.T) {
 	}
 }
 
+func TestSaldoCommandUsesCacheUserFallbackE2E(t *testing.T) {
+	var requestedQuery url.Values
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.Path != "/ttapi/saldo/get_current_saldo" {
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.String())
+		}
+		requestedQuery = r.URL.Query()
+		_, _ = io.WriteString(w, `{"saldo":"1463","from":"2024-09-01","to":"2026-02-21"}`)
+	}))
+	t.Cleanup(server.Close)
+
+	configPath := filepath.Join(t.TempDir(), "config.json")
+	cachePath := filepath.Join(t.TempDir(), "cache.json")
+	t.Setenv(config.EnvConfigPath, configPath)
+	t.Setenv(config.EnvCachePath, cachePath)
+	cfg := config.New()
+	cfg.APIBaseURL = server.URL
+	cfg.Token.AccessToken = "token-saldo"
+	if err := config.Save(configPath, cfg); err != nil {
+		t.Fatalf("save config failed: %v", err)
+	}
+	cache := config.NewCache()
+	cache.User.ID = 24352445
+	if err := config.SaveCache(cachePath, cache); err != nil {
+		t.Fatalf("save cache failed: %v", err)
+	}
+
+	code, out, errOut := runCLI(t, []string{"saldo", "--format", "json"})
+	if code != 0 {
+		t.Fatalf("saldo failed code=%d stderr=%q", code, errOut)
+	}
+	if strings.TrimSpace(errOut) != "" {
+		t.Fatalf("expected empty stderr, got %q", errOut)
+	}
+
+	if requestedQuery.Get("userid") != "24352445" {
+		t.Fatalf("expected userid fallback, got %q", requestedQuery.Get("userid"))
+	}
+
+	var result cliJSONResult
+	if err := json.Unmarshal([]byte(out), &result); err != nil {
+		t.Fatalf("decode saldo result failed: %v\noutput=%s", err, out)
+	}
+	if !result.OK || result.Command != "saldo" {
+		t.Fatalf("unexpected saldo command result: %#v", result)
+	}
+	if toInt64(result.Data["user_id"]) != 24352445 {
+		t.Fatalf("expected user_id=24352445, got %#v", result.Data["user_id"])
+	}
+	if getString(result.Data, "from") != "2024-09-01" || getString(result.Data, "to") != "2026-02-21" {
+		t.Fatalf("unexpected from/to in saldo data: %#v", result.Data)
+	}
+	if toInt64(result.Data["cumulative_saldo_minutes"]) != 1463 {
+		t.Fatalf("expected cumulative_saldo_minutes=1463, got %#v", result.Data["cumulative_saldo_minutes"])
+	}
+
+	duration, ok := result.Data["cumulative_saldo_duration"].(map[string]any)
+	if !ok {
+		t.Fatalf("missing cumulative_saldo_duration payload: %#v", result.Data["cumulative_saldo_duration"])
+	}
+	if getString(duration, "format") != "minutes" {
+		t.Fatalf("expected duration format=minutes, got %#v", duration["format"])
+	}
+	if toInt64(duration["minutes"]) != 1463 {
+		t.Fatalf("expected duration minutes=1463, got %#v", duration["minutes"])
+	}
+}
+
+func TestSaldoCommandUsesUserFlagE2E(t *testing.T) {
+	var requestedQuery url.Values
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.Path != "/ttapi/saldo/get_current_saldo" {
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.String())
+		}
+		requestedQuery = r.URL.Query()
+		_, _ = io.WriteString(w, `{"saldo":120,"from":"2026-02-01","to":"2026-02-22"}`)
+	}))
+	t.Cleanup(server.Close)
+
+	configPath := filepath.Join(t.TempDir(), "config.json")
+	t.Setenv(config.EnvConfigPath, configPath)
+	cfg := config.New()
+	cfg.APIBaseURL = server.URL
+	cfg.Token.AccessToken = "token-saldo-user-flag"
+	if err := config.Save(configPath, cfg); err != nil {
+		t.Fatalf("save config failed: %v", err)
+	}
+
+	code, out, errOut := runCLI(t, []string{"saldo", "--user", "999000", "--duration-format", "hours"})
+	if code != 0 {
+		t.Fatalf("saldo failed code=%d stderr=%q", code, errOut)
+	}
+	if strings.TrimSpace(errOut) != "" {
+		t.Fatalf("expected empty stderr, got %q", errOut)
+	}
+
+	if requestedQuery.Get("userid") != "999000" {
+		t.Fatalf("expected explicit userid=999000, got %q", requestedQuery.Get("userid"))
+	}
+	if !strings.Contains(out, "cumulative_saldo_minutes: 120") {
+		t.Fatalf("expected text saldo minutes output, got %q", out)
+	}
+	if !strings.Contains(out, "cumulative_saldo_duration: 2.00 hours") {
+		t.Fatalf("expected text saldo duration output, got %q", out)
+	}
+}
+
+func TestSaldoCommandRequiresUserFallbackE2E(t *testing.T) {
+	configPath := filepath.Join(t.TempDir(), "config.json")
+	cachePath := filepath.Join(t.TempDir(), "cache.json")
+	t.Setenv(config.EnvConfigPath, configPath)
+	t.Setenv(config.EnvCachePath, cachePath)
+
+	cfg := config.New()
+	cfg.Token.AccessToken = "token-saldo-no-user"
+	if err := config.Save(configPath, cfg); err != nil {
+		t.Fatalf("save config failed: %v", err)
+	}
+
+	code, _, errOut := runCLI(t, []string{"saldo"})
+	if code != 1 {
+		t.Fatalf("expected exit code 1 for missing user fallback, got %d", code)
+	}
+	if !strings.Contains(errOut, "--user is required") {
+		t.Fatalf("expected missing user fallback error, got %q", errOut)
+	}
+}
+
 func TestAbsenceCommentCommandE2E(t *testing.T) {
 	code, out, errOut := runCLI(t, []string{
 		"absence", "comment",
@@ -1331,6 +1461,173 @@ func TestCalendarOverviewCommandE2E(t *testing.T) {
 	day22Holidays, _ := day22["holidays"].(map[string]any)
 	if toInt64(day22Holidays["count"]) != 1 {
 		t.Fatalf("unexpected 2026-02-22 holidays payload: %#v", day22)
+	}
+}
+
+func TestCalendarDetailedCommandE2E(t *testing.T) {
+	var worktimesQuery url.Values
+	var absencesQuery url.Values
+	var holidaysQuery url.Values
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/worktimes":
+			worktimesQuery = r.URL.Query()
+			_, _ = io.WriteString(w, `{
+				"count": 1,
+				"worktimes": [
+					{"id":11,"date":"2026-02-19","starttime":"09:00","endtime":"17:00","pause":30,"description":"feature work"}
+				]
+			}`)
+		case r.Method == http.MethodGet && r.URL.Path == "/ttapi/absence/split":
+			absencesQuery = r.URL.Query()
+			_, _ = io.WriteString(w, `[
+				{"id":51744207,"date":"2026-02-20","startdate":"2026-02-20","enddate":"2026-02-20","absence_hours":7.5,"abcensetype":{"id":18423477,"name":"Sick leave - own"},"description":"sick"}
+			]`)
+		case r.Method == http.MethodGet && r.URL.Path == "/ttapi/workdayCalendar/workdayDays":
+			holidaysQuery = r.URL.Query()
+			_, _ = io.WriteString(w, `{
+				"count": 1,
+				"workdayDays": [
+					{"id":"11763","date":"2026-02-22","desc":"Sunday Celebration","minutes":"0","midweek_holiday_pay":"1"}
+				]
+			}`)
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.String())
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	configPath := filepath.Join(t.TempDir(), "config.json")
+	cachePath := filepath.Join(t.TempDir(), "cache.json")
+	t.Setenv(config.EnvConfigPath, configPath)
+	t.Setenv(config.EnvCachePath, cachePath)
+	cfg := config.New()
+	cfg.APIBaseURL = server.URL
+	cfg.Token.AccessToken = "token-calendar-detailed"
+	if err := config.Save(configPath, cfg); err != nil {
+		t.Fatalf("save config failed: %v", err)
+	}
+	cache := config.NewCache()
+	cache.User.WorktimeGroupID = 17910737
+	if err := config.SaveCache(cachePath, cache); err != nil {
+		t.Fatalf("save cache failed: %v", err)
+	}
+
+	code, out, errOut := runCLI(t, []string{
+		"calendar", "detailed",
+		"--from", "2026-02-19",
+		"--to", "2026-02-22",
+		"--format", "json",
+		"--duration-format", "hours",
+	})
+	if code != 0 {
+		t.Fatalf("calendar detailed failed code=%d stderr=%q", code, errOut)
+	}
+	if strings.TrimSpace(errOut) != "" {
+		t.Fatalf("expected empty stderr, got %q", errOut)
+	}
+
+	if worktimesQuery.Get("date") != "2026-02-19_2026-02-22" {
+		t.Fatalf("unexpected worktimes date query: %#v", worktimesQuery)
+	}
+	if absencesQuery.Get("startdate") != "2026-02-19" || absencesQuery.Get("enddate") != "2026-02-22" {
+		t.Fatalf("unexpected absence start/end query: %#v", absencesQuery)
+	}
+	if holidaysQuery.Get("worktimegroup") != "17910737" {
+		t.Fatalf("expected worktimegroup fallback, got %q", holidaysQuery.Get("worktimegroup"))
+	}
+
+	var result cliJSONResult
+	if err := json.Unmarshal([]byte(out), &result); err != nil {
+		t.Fatalf("decode calendar detailed result failed: %v\noutput=%s", err, out)
+	}
+	if !result.OK || result.Command != "calendar detailed" {
+		t.Fatalf("unexpected command result: %#v", result)
+	}
+
+	if _, exists := result.Data["worktimegroup"]; exists {
+		t.Fatalf("unexpected worktimegroup key in detailed response: %#v", result.Data)
+	}
+	if toInt64(result.Data["worktime_group_id"]) != 17910737 {
+		t.Fatalf("expected worktime_group_id=17910737, got %#v", result.Data["worktime_group_id"])
+	}
+	if getString(result.Data, "duration_format") != "hours" {
+		t.Fatalf("expected duration_format=hours, got %#v", result.Data["duration_format"])
+	}
+
+	durations, ok := result.Data["durations"].(map[string]any)
+	if !ok {
+		t.Fatalf("missing durations payload: %#v", result.Data["durations"])
+	}
+	worktimeDuration, ok := durations["worktime"].(map[string]any)
+	if !ok {
+		t.Fatalf("missing worktime duration payload: %#v", durations["worktime"])
+	}
+	if getString(worktimeDuration, "format") != "hours" {
+		t.Fatalf("expected worktime duration format=hours, got %#v", worktimeDuration["format"])
+	}
+	if hours, ok := toFloat64(worktimeDuration["value"]); !ok || hours != 7.5 {
+		t.Fatalf("expected worktime duration value=7.5 hours, got %#v", worktimeDuration["value"])
+	}
+	absenceDuration, ok := durations["absence"].(map[string]any)
+	if !ok {
+		t.Fatalf("missing absence duration payload: %#v", durations["absence"])
+	}
+	if hours, ok := toFloat64(absenceDuration["value"]); !ok || hours != 7.5 {
+		t.Fatalf("expected absence duration value=7.5 hours, got %#v", absenceDuration["value"])
+	}
+
+	totals, ok := result.Data["totals"].(map[string]any)
+	if !ok {
+		t.Fatalf("missing totals payload: %#v", result.Data["totals"])
+	}
+	if toInt64(totals["worktime_minutes"]) != 450 || toInt64(totals["absence_minutes"]) != 450 {
+		t.Fatalf("unexpected minutes totals: %#v", totals)
+	}
+	if toInt64(totals["holiday_count"]) != 1 {
+		t.Fatalf("expected holiday_count=1, got %#v", totals["holiday_count"])
+	}
+	if toInt64(totals["day_off_days"]) != 3 {
+		t.Fatalf("expected day_off_days=3, got %#v", totals["day_off_days"])
+	}
+	if toInt64(totals["celebration_days"]) != 1 || toInt64(totals["celebration_count"]) != 1 {
+		t.Fatalf("unexpected celebration totals: %#v", totals)
+	}
+
+	items, ok := result.Data["items"].([]any)
+	if !ok || len(items) != 4 {
+		t.Fatalf("expected 4 day rows, got %#v", result.Data["items"])
+	}
+
+	dayByDate := map[string]map[string]any{}
+	for _, raw := range items {
+		entry, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		dayByDate[getString(entry, "date")] = entry
+	}
+
+	day20, ok := dayByDate["2026-02-20"]
+	if !ok {
+		t.Fatalf("missing 2026-02-20 in day rows: %#v", dayByDate)
+	}
+	if off, _ := day20["is_day_off"].(bool); !off {
+		t.Fatalf("expected 2026-02-20 is_day_off=true, got %#v", day20["is_day_off"])
+	}
+	reasons20, _ := day20["day_off_reasons"].([]any)
+	if len(reasons20) == 0 || getString(map[string]any{"value": reasons20[0]}, "value") == "" {
+		t.Fatalf("expected non-empty day_off_reasons for 2026-02-20, got %#v", day20["day_off_reasons"])
+	}
+
+	day22, ok := dayByDate["2026-02-22"]
+	if !ok {
+		t.Fatalf("missing 2026-02-22 in day rows: %#v", dayByDate)
+	}
+	celebrations22, _ := day22["celebrations"].([]any)
+	if len(celebrations22) != 1 {
+		t.Fatalf("expected one celebration on 2026-02-22, got %#v", day22["celebrations"])
 	}
 }
 

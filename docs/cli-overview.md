@@ -31,6 +31,7 @@ otta status
 - `otta --version`: print CLI build version.
 - `otta auth login`: authenticate and store token/config data.
 - `otta status`: validate auth and refresh cached user/worktimegroup metadata.
+- `otta saldo`: return current cumulative saldo for the resolved user id.
 - `otta config path`: print resolved config path.
 - `otta config cache-path`: print resolved cache path.
 - `otta worktimes list`: list entries for a specific date.
@@ -40,11 +41,31 @@ otta status
 - `otta worktimes add`: create an entry.
 - `otta worktimes update`: update an existing entry.
 - `otta worktimes delete`: delete an entry.
-- `otta calendar overview`: generate combined day-by-day report (worktimes + absences + holidays).
+- `otta calendar overview`: generate combined calendar totals with day rows.
+- `otta calendar detailed`: generate full day-by-day detailed calendar report.
 - `otta holidays`: fetch workday calendar/holiday rows.
 - `otta absence options`: fetch absence type/user options.
 - `otta absence browse`: aggregate absence entries across a date range.
 - `otta absence comment`: generate absence comment text.
+
+Important: `worktimes list/browse/report` do not return absences.
+For complete schedule interpretation, prefer `calendar detailed` (or `calendar overview` for lighter totals/day rows).
+
+## Duration Formatting
+
+Use global `--duration-format` on read commands with minute totals:
+
+- values: `minutes` (default), `hours`, `days`, `hhmm`
+- applies to: `worktimes list/browse/report`, `absence browse`, `saldo`, `holidays`, `calendar overview`, `calendar detailed`
+- conversion basis for `days`: `1 day = 24h = 1440 minutes`
+
+Examples:
+
+```bash
+otta worktimes browse --from 2026-02-01 --to 2026-02-28 --format json --duration-format hours
+otta saldo --format json --duration-format hhmm
+otta calendar detailed --from 2026-02-01 --to 2026-02-28 --format json --duration-format hhmm
+```
 
 ## Practical First-Run Sequence
 
@@ -52,9 +73,11 @@ otta status
 otta auth login --username <username> --password <password>
 otta status --format json
 otta worktimes options --date 2026-02-20 --format json
+otta saldo --format json
 otta worktimes list --date 2026-02-20 --format json
 otta absence browse --from 2026-02-01 --to 2026-02-28 --format json
 otta calendar overview --from 2026-02-01 --to 2026-02-28 --format json
+otta calendar detailed --from 2026-02-01 --to 2026-02-28 --format json
 ```
 
 ## Validation Note
@@ -62,8 +85,10 @@ otta calendar overview --from 2026-02-01 --to 2026-02-28 --format json
 A real terminal E2E sweep was run on 2026-02-22 against the live API, covering:
 
 - auth and status
+- saldo
 - config path commands
 - worktimes list/browse/report/options/add/update/delete
 - calendar overview
+- calendar detailed
 - holidays
 - absence options/browse/comment
