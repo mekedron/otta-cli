@@ -154,6 +154,45 @@
   background: linear-gradient(180deg, #0f1525 0%, #121c2f 100%);
 }
 
+[data-theme='dark'] .heroBanner {
+  background:
+    radial-gradient(circle at 18% 18%, rgba(174, 209, 255, 0.22), transparent 36%),
+    radial-gradient(circle at 82% 26%, rgba(143, 188, 255, 0.24), transparent 40%),
+    linear-gradient(130deg, #144ab4 0%, #0f3f98 52%, #0b3178 100%);
+  color: #ecf4ff;
+}
+
+[data-theme='dark'] .heroTitle {
+  color: #f6f9ff;
+}
+
+[data-theme='dark'] .heroSubtitle {
+  color: #dce8ff;
+}
+
+[data-theme='dark'] .primaryAction {
+  background: #e5efff;
+  border-color: transparent;
+  color: #0d2d63;
+}
+
+[data-theme='dark'] .primaryAction:hover {
+  background: #f1f6ff;
+  color: #0a2552;
+}
+
+[data-theme='dark'] .secondaryAction {
+  background: rgba(110, 168, 255, 0.18);
+  border-color: rgba(160, 200, 255, 0.82);
+  color: #edf4ff;
+}
+
+[data-theme='dark'] .secondaryAction:hover {
+  background: rgba(110, 168, 255, 0.3);
+  border-color: rgba(179, 215, 255, 0.95);
+  color: #fff;
+}
+
 [data-theme='dark'] .blockHeader p,
 [data-theme='dark'] .featureCard p,
 [data-theme='dark'] .docCard p {
