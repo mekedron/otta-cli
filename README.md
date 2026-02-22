@@ -8,9 +8,9 @@ It is intended for Finnish time tracking use cases.
 - auth command (`otta auth login`)
 - status check command (`otta status`)
 - cumulative saldo command (`otta saldo`)
-- worktime commands (`list/browse/report/options/add/update/delete`)
+- worktime commands (`list/read/browse/report/options/add/update/delete`)
 - calendar commands (`overview/detailed`)
-- holidays retrieval command
+- holidays commands (`holidays` and `holidays read`)
 - absence commands (`options/browse/read/add/update/delete/comment`)
 - configurable local config path
 - separate cache file for API-derived user metadata
@@ -65,6 +65,7 @@ otta status
 otta config path
 otta config cache-path
 otta worktimes list --date 2026-02-20
+otta worktimes read --id <worktime-id> --format json
 otta worktimes browse --from 2026-02-20 --to 2026-02-26 --format json
 otta worktimes report --from 2026-02-01 --to 2026-02-28 --format csv
 otta calendar overview --from 2026-02-01 --to 2026-02-28 --format json
@@ -72,6 +73,7 @@ otta calendar detailed --from 2026-02-01 --to 2026-02-28 --format json
 otta worktimes options --date 2026-02-20 --format json
 otta saldo --format json
 otta holidays --from 2026-02-20 --to 2026-02-20 --worktimegroup <id> --format json
+otta holidays read --from 2026-02-20 --to 2026-02-20 --worktimegroup <id> --format json
 otta absence browse --from 2026-02-01 --to 2026-02-28 --format json
 otta absence options --format json
 otta absence add --type <absence-type-id> --from 2026-02-20 --to 2026-02-20 --description "sick leave" --format json
@@ -81,7 +83,7 @@ otta absence delete --id <absence-id> --format json
 otta absence comment --type sick --from 2026-02-20 --to 2026-02-20 --format json
 ```
 
-Important: `worktimes list/browse/report` return only worktime rows and do not include absences.
+Important: `worktimes list/read/browse/report` return only worktime rows and do not include absences.
 For full day-by-day schedule checks (worktimes + absences + holidays/day-off signals), prefer:
 
 ```bash

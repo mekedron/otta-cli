@@ -11,7 +11,7 @@ Before running these commands:
 
 ## Worktimes
 
-Important: `worktimes list`, `worktimes browse`, and `worktimes report` return only worktime rows.
+Important: `worktimes list`, `worktimes read`, `worktimes browse`, and `worktimes report` return only worktime rows.
 They do not include absences. Use `absence browse` or `calendar detailed` when schedule context matters.
 
 Duration display on read commands can be changed with global `--duration-format`:
@@ -24,6 +24,12 @@ Collect worktimes for a day:
 
 ```bash
 otta worktimes list --date 2026-02-20 --format json
+```
+
+Read one worktime row by id:
+
+```bash
+otta worktimes read --id <worktime-id> --format json
 ```
 
 Browse worktimes across a date range:
@@ -113,6 +119,7 @@ otta worktimes add --date "$DATE" --start 06:00 --end 06:30 --pause 0 \
   --project <project-id> --worktype <worktype-id> --description "$MARKER" --format json
 
 # 3) Update then delete (replace <worktime-id>)
+otta worktimes read --id <worktime-id> --format json
 otta worktimes update --id <worktime-id> --description "${MARKER}-updated" --format json
 otta worktimes delete --id <worktime-id> --format json
 ```
@@ -123,6 +130,12 @@ Fetch holidays/workday calendar range:
 
 ```bash
 otta holidays --from 2026-02-20 --to 2026-02-20 --worktimegroup <worktimegroup-id> --format json
+```
+
+Equivalent explicit read command:
+
+```bash
+otta holidays read --from 2026-02-20 --to 2026-02-20 --worktimegroup <worktimegroup-id> --format json
 ```
 
 If `--worktimegroup` is omitted, CLI uses fallback values (if available).

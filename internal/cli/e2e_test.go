@@ -588,6 +588,73 @@ func TestWorktimesCRUDCommandsE2E(t *testing.T) {
 	}
 }
 
+func TestWorktimesReadCommandE2E(t *testing.T) {
+	var requestedQuery url.Values
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.Path != "/worktimes" {
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.String())
+		}
+		requestedQuery = r.URL.Query()
+		_, _ = io.WriteString(w, `{"count":1,"worktimes":[{"id":7,"status":"open","date":"2026-02-20","starttime":"09:00","endtime":"17:00","pause":30,"project":17911009,"user":24352445,"worktype":18423445,"description":"feature work"}]}`)
+	}))
+	t.Cleanup(server.Close)
+
+	configPath := filepath.Join(t.TempDir(), "config.json")
+	t.Setenv(config.EnvConfigPath, configPath)
+	cfg := config.New()
+	cfg.APIBaseURL = server.URL
+	cfg.Token.AccessToken = "token-worktimes-read"
+	if err := config.Save(configPath, cfg); err != nil {
+		t.Fatalf("save config failed: %v", err)
+	}
+
+	code, out, errOut := runCLI(t, []string{
+		"worktimes", "read",
+		"--id", "7",
+		"--format", "json",
+		"--duration-format", "hours",
+	})
+	if code != 0 {
+		t.Fatalf("worktimes read failed code=%d stderr=%q", code, errOut)
+	}
+	if strings.TrimSpace(errOut) != "" {
+		t.Fatalf("expected empty stderr, got %q", errOut)
+	}
+
+	if requestedQuery.Get("id") != "7" || requestedQuery.Get("sideload") != "true" {
+		t.Fatalf("unexpected read query: %#v", requestedQuery)
+	}
+
+	var result cliJSONResult
+	if err := json.Unmarshal([]byte(out), &result); err != nil {
+		t.Fatalf("decode worktimes read result failed: %v\noutput=%s", err, out)
+	}
+	if !result.OK || result.Command != "worktimes read" {
+		t.Fatalf("unexpected command result: %#v", result)
+	}
+	if toInt64(result.Data["id"]) != 7 {
+		t.Fatalf("expected id=7, got %#v", result.Data["id"])
+	}
+	item, ok := result.Data["item"].(map[string]any)
+	if !ok {
+		t.Fatalf("missing item payload: %#v", result.Data["item"])
+	}
+	if getString(item, "description") != "feature work" {
+		t.Fatalf("unexpected description in read item: %#v", item["description"])
+	}
+	if toInt64(result.Data["total_minutes"]) != 450 {
+		t.Fatalf("expected total_minutes=450, got %#v", result.Data["total_minutes"])
+	}
+	duration, ok := result.Data["total_duration"].(map[string]any)
+	if !ok {
+		t.Fatalf("missing total_duration payload: %#v", result.Data["total_duration"])
+	}
+	if getString(duration, "format") != "hours" {
+		t.Fatalf("expected duration format=hours, got %#v", duration["format"])
+	}
+}
+
 func TestWorktimesBrowseCommandRangeE2E(t *testing.T) {
 	var requestedDates []string
 
@@ -963,6 +1030,60 @@ func TestHolidaysCommandUsesCacheWorktimegroupFallbackE2E(t *testing.T) {
 	}
 	if !strings.Contains(out, `"command": "holidays"`) {
 		t.Fatalf("unexpected holidays output: %s", out)
+	}
+}
+
+func TestHolidaysReadCommandE2E(t *testing.T) {
+	var requestedQuery url.Values
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.Path != "/ttapi/workdayCalendar/workdayDays" {
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.String())
+		}
+		requestedQuery = r.URL.Query()
+		_, _ = io.WriteString(w, `{"count":1,"workdayDays":[{"id":9001,"date":"2026-02-20","minutes":450,"absence_minutes":0}]}`)
+	}))
+	t.Cleanup(server.Close)
+
+	configPath := filepath.Join(t.TempDir(), "config.json")
+	t.Setenv(config.EnvConfigPath, configPath)
+	cfg := config.New()
+	cfg.APIBaseURL = server.URL
+	cfg.Token.AccessToken = "token-holidays-read"
+	if err := config.Save(configPath, cfg); err != nil {
+		t.Fatalf("save config failed: %v", err)
+	}
+
+	code, out, errOut := runCLI(t, []string{
+		"holidays", "read",
+		"--from", "2026-02-20",
+		"--to", "2026-02-20",
+		"--worktimegroup", "17910737",
+		"--format", "json",
+	})
+	if code != 0 {
+		t.Fatalf("holidays read failed code=%d stderr=%q", code, errOut)
+	}
+	if strings.TrimSpace(errOut) != "" {
+		t.Fatalf("expected empty stderr, got %q", errOut)
+	}
+
+	if requestedQuery.Get("date") != "2026-02-20_2026-02-20" {
+		t.Fatalf("expected date range query, got %q", requestedQuery.Get("date"))
+	}
+	if requestedQuery.Get("worktimegroup") != "17910737" {
+		t.Fatalf("expected explicit worktimegroup, got %q", requestedQuery.Get("worktimegroup"))
+	}
+
+	var result cliJSONResult
+	if err := json.Unmarshal([]byte(out), &result); err != nil {
+		t.Fatalf("decode holidays read result failed: %v\noutput=%s", err, out)
+	}
+	if !result.OK || result.Command != "holidays read" {
+		t.Fatalf("unexpected command result: %#v", result)
+	}
+	if toInt64(result.Data["count"]) != 1 {
+		t.Fatalf("expected count=1, got %#v", result.Data["count"])
 	}
 }
 

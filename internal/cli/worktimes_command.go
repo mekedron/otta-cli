@@ -21,6 +21,7 @@ func newWorktimesCommand() *cobra.Command {
 	}
 
 	worktimesCmd.AddCommand(newWorktimesListCommand())
+	worktimesCmd.AddCommand(newWorktimesReadCommand())
 	worktimesCmd.AddCommand(newWorktimesBrowseCommand())
 	worktimesCmd.AddCommand(newWorktimesReportCommand())
 	worktimesCmd.AddCommand(newWorktimesOptionsCommand())

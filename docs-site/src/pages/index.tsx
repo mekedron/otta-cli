@@ -10,6 +10,7 @@ const quickCommands = [
   'otta status --format json',
   'otta worktimes options --date 2026-02-20 --format json',
   'otta worktimes list --date 2026-02-20 --format json',
+  'otta worktimes read --id <worktime-id> --format json',
   'otta worktimes browse --from 2026-02-20 --to 2026-02-26 --format json',
   'otta worktimes report --from 2026-02-01 --to 2026-02-28 --format csv',
   'otta calendar overview --from 2026-02-01 --to 2026-02-28 --format json',
@@ -21,6 +22,7 @@ const quickCommands = [
   'otta absence delete --id <absence-id> --format json',
   'otta absence comment --type sick --from 2026-02-20 --to 2026-02-20 --format json',
   'otta holidays --from 2026-02-20 --to 2026-02-20 --worktimegroup <id> --format json',
+  'otta holidays read --from 2026-02-20 --to 2026-02-20 --worktimegroup <id> --format json',
 ];
 
 const installCommands = [
@@ -42,7 +44,7 @@ const highlights = [
   {
     title: 'Timesheet Operations',
     description:
-      'List, browse, report, inspect selectable options, and manage full worktime + absence CRUD flows with deterministic --format output.',
+      'List/read/browse/report, inspect selectable options, and manage full worktime + absence CRUD flows with deterministic --format output.',
   },
   {
     title: 'Automation Friendly',
@@ -54,7 +56,7 @@ const highlights = [
 const docLinks = [
   {to: '/docs/cli-installation', label: 'Installation', summary: 'Build and run locally, set paths, and bootstrap env vars.'},
   {to: '/docs/cli-auth', label: 'Authentication', summary: 'Credential flow, token handling, and security notes.'},
-  {to: '/docs/cli-timesheets', label: 'Time Tracking', summary: 'Worktime list/browse/report/CRUD, absence browse/read/add/update/delete, holidays retrieval, and calendar overview.'},
+  {to: '/docs/cli-timesheets', label: 'Time Tracking', summary: 'Worktime list/read/browse/report/CRUD, absence browse/read/add/update/delete, holidays read/retrieval, and calendar overview.'},
   {to: '/docs/cli-output-contract', label: 'Output Contract', summary: 'JSON envelope shape and scriptability guarantees.'},
 ];
 

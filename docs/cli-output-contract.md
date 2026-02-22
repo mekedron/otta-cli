@@ -16,7 +16,7 @@ For scriptability, command output is deterministic.
   - all `worktimes` subcommands
   - `calendar overview`
   - `calendar detailed`
-  - `holidays`
+  - `holidays` and `holidays read`
   - all `absence` subcommands (`options`, `browse`, `read`, `add`, `update`, `delete`, `comment`)
 - CSV mode is available only for `worktimes report --format csv`
 - `--json` exists as a deprecated alias for `--format json`
@@ -31,7 +31,7 @@ For scriptability, command output is deterministic.
 - top-level object: `ok`, `command`, `data`
 - `data` fields are command-specific
 - raw API payload is included where API schemas vary by tenant
-- `worktimes list/browse/report` payloads are worktime-only and never include absences
+- `worktimes list/read/browse/report` payloads are worktime-only and never include absences
 - use `absence browse` or `calendar detailed/overview` when absence-aware schedule output is needed
 - minute-based read commands support global `--duration-format` (`minutes|hours|days|hhmm`)
 - duration conversion basis for `days` is fixed: `1 day = 24h = 1440 minutes`

@@ -35,6 +35,7 @@ otta status
 - `otta config path`: print resolved config path.
 - `otta config cache-path`: print resolved cache path.
 - `otta worktimes list`: list entries for a specific date.
+- `otta worktimes read`: fetch one worktime row by id.
 - `otta worktimes browse`: aggregate entries across a date range.
 - `otta worktimes report`: export range data as JSON or CSV.
 - `otta worktimes options`: fetch selectable IDs for add/update flows.
@@ -44,6 +45,7 @@ otta status
 - `otta calendar overview`: generate combined calendar totals with day rows.
 - `otta calendar detailed`: generate full day-by-day detailed calendar report.
 - `otta holidays`: fetch workday calendar/holiday rows.
+- `otta holidays read`: fetch workday calendar/holiday rows (explicit read subcommand).
 - `otta absence options`: fetch absence type/user options.
 - `otta absence browse`: aggregate absence entries across a date range.
 - `otta absence read`: fetch one absence row by id.
@@ -52,7 +54,7 @@ otta status
 - `otta absence delete`: delete an absence row.
 - `otta absence comment`: generate absence comment text.
 
-Important: `worktimes list/browse/report` do not return absences.
+Important: `worktimes list/read/browse/report` do not return absences.
 For complete schedule interpretation, prefer `calendar detailed` (or `calendar overview` for lighter totals/day rows).
 
 ## Duration Formatting
@@ -60,7 +62,7 @@ For complete schedule interpretation, prefer `calendar detailed` (or `calendar o
 Use global `--duration-format` on read commands with minute totals:
 
 - values: `minutes` (default), `hours`, `days`, `hhmm`
-- applies to: `worktimes list/browse/report`, `absence browse`, `saldo`, `holidays`, `calendar overview`, `calendar detailed`
+- applies to: `worktimes list/read/browse/report`, `absence browse`, `saldo`, `holidays`/`holidays read`, `calendar overview`, `calendar detailed`
 - conversion basis for `days`: `1 day = 24h = 1440 minutes`
 
 Examples:
@@ -79,6 +81,8 @@ otta status --format json
 otta worktimes options --date 2026-02-20 --format json
 otta saldo --format json
 otta worktimes list --date 2026-02-20 --format json
+otta worktimes read --id <worktime-id> --format json
+otta holidays read --from 2026-02-20 --to 2026-02-20 --worktimegroup <id> --format json
 otta absence options --format json
 otta absence browse --from 2026-02-01 --to 2026-02-28 --format json
 otta absence add --type <absence-type-id> --from 2026-02-20 --to 2026-02-20 --description "sick leave" --format json
@@ -96,8 +100,8 @@ A real terminal E2E sweep was run on 2026-02-22 against the live API, covering:
 - auth and status
 - saldo
 - config path commands
-- worktimes list/browse/report/options/add/update/delete
+- worktimes list/read/browse/report/options/add/update/delete
 - calendar overview
 - calendar detailed
-- holidays
+- holidays/holidays read
 - absence options/browse/read/add/update/delete/comment

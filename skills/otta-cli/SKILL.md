@@ -1,6 +1,6 @@
 ---
 name: otta-cli
-description: "Use `otta-cli` to automate `otta.fi` workflows from terminal. This tool is usually used for tracking working time, absences, and sick leaves: authenticate, inspect config/cache, check account status, manage worktimes (list/add/update/delete), browse absences, fetch holidays, and generate combined/detailed calendar reports. Trigger this skill when a request needs CLI-first Otta operations, `OTTA_CLI_*` environment setup, machine-readable `--format json` output, or diagnosis of auth/config/API validation errors."
+description: "Use `otta-cli` to automate `otta.fi` workflows from terminal. This tool is usually used for tracking working time, absences, and sick leaves: authenticate, inspect config/cache, check account status, manage worktimes (list/read/add/update/delete), browse absences, fetch holidays, and generate combined/detailed calendar reports. Trigger this skill when a request needs CLI-first Otta operations, `OTTA_CLI_*` environment setup, machine-readable `--format json` output, or diagnosis of auth/config/API validation errors."
 ---
 
 # Otta CLI
@@ -39,6 +39,12 @@ List worktimes:
 
 ```bash
 otta worktimes list --date 2026-02-20 --format json
+```
+
+Read worktime by id:
+
+```bash
+otta worktimes read --id <worktime-id> --format json
 ```
 
 Add worktime:
@@ -82,6 +88,7 @@ otta holidays \
 ```
 
 - `--worktimegroup` is optional if `OTTA_CLI_WORKTIMEGROUP_ID` or cached value exists.
+- explicit subcommand form is also available: `otta holidays read --from ... --to ... --worktimegroup ... --format json`
 
 Browse absences:
 
@@ -190,7 +197,7 @@ Use these variables when running in CI/non-interactive environments:
 ## Agent Operating Rules
 
 1. Prefer `--format json` for all data-producing commands and parse response fields instead of scraping text output.
-2. `worktimes list/browse/report` are worktime-only and never include absences; do not infer absences from empty worktime rows.
+2. `worktimes list/read/browse/report` are worktime-only and never include absences; do not infer absences from empty worktime rows.
 3. For user schedule checks/log interpretation and personal worktime summaries, prefer `calendar detailed --format json` first; use `calendar overview` as lighter fallback.
 4. Use `--duration-format` when users request non-minute output; keep raw minute values for auditability.
 5. Run `status --format json` before operations that rely on cached user/worktimegroup metadata.

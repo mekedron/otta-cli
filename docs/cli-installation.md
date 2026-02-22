@@ -56,6 +56,8 @@ $OTTA_BIN --version
 $OTTA_BIN --help
 $OTTA_BIN config path
 $OTTA_BIN config cache-path
+$OTTA_BIN worktimes read --id <worktime-id> --format json
+$OTTA_BIN holidays read --from 2026-02-20 --to 2026-02-20 --worktimegroup <id> --format json
 $OTTA_BIN absence browse --from 2026-02-01 --to 2026-02-28 --format json
 $OTTA_BIN absence options --format json
 $OTTA_BIN absence add --type <absence-type-id> --from 2026-02-20 --to 2026-02-20 --description "sick leave" --format json
