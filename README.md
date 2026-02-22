@@ -75,8 +75,10 @@ otta saldo --format json
 otta holidays --from 2026-02-20 --to 2026-02-20 --worktimegroup <id> --format json
 otta holidays read --from 2026-02-20 --to 2026-02-20 --worktimegroup <id> --format json
 otta absence browse --from 2026-02-01 --to 2026-02-28 --format json
-otta absence options --format json
-otta absence add --type <absence-type-id> --from 2026-02-20 --to 2026-02-20 --description "sick leave" --format json
+otta absence options --mode days --format json
+otta absence options --mode hours --format json
+otta absence add --mode days --type <absence-type-id> --from 2026-02-20 --to 2026-02-20 --description "sick leave" --format json
+otta absence add --mode hours --type <absence-type-id> --from 2026-02-20 --start 09:00 --end 11:30 --hours 2.5 --description "extra hours" --format json
 otta absence read --id <absence-id> --format json
 otta absence update --id <absence-id> --description "sick leave" --format json
 otta absence delete --id <absence-id> --format json
@@ -102,6 +104,14 @@ otta calendar detailed --from 2026-02-01 --to 2026-02-28 --duration-format hours
 otta worktimes browse --from 2026-02-01 --to 2026-02-28 --format json --duration-format days
 otta absence browse --from 2026-02-01 --to 2026-02-28 --format json --duration-format hhmm
 ```
+
+Absence mode support:
+
+- `otta absence add` supports `--mode auto|days|hours` (`auto` is default).
+- days mode validates type ids against Otta day-based options (`both||days||(empty)`).
+- hours mode validates type ids against Otta hour-based options (`both||hours||(empty)`), requires `--start` and `--end`, and forces `--to == --from`.
+- use `otta absence options --mode days|hours` to list selectable mode-specific type ids.
+- mode-specific type listing needs resolved user id (`--user`, `OTTA_CLI_USER_ID`, or cached user from `otta status`).
 
 For non-interactive scripts, prefer stdin or env secrets to reduce shell history exposure:
 

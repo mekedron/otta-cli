@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/mekedron/otta-cli/internal/config"
-	"github.com/mekedron/otta-cli/internal/otta"
 	"github.com/spf13/cobra"
 )
 
@@ -15,6 +14,7 @@ func newAbsenceAddCommand() *cobra.Command {
 	var (
 		dateFrom      string
 		dateTo        string
+		mode          string
 		startTime     string
 		endTime       string
 		absenceTypeID int64
@@ -36,22 +36,52 @@ func newAbsenceAddCommand() *cobra.Command {
 				return err
 			}
 
-			if _, _, err := parseWorktimesDateRange(dateFrom, dateTo); err != nil {
-				return err
-			}
-			if err := validateOptionalHHMM(startTime, "--start"); err != nil {
-				return err
-			}
-			if err := validateOptionalHHMM(endTime, "--end"); err != nil {
-				return err
-			}
 			if absenceTypeID <= 0 {
 				return fmt.Errorf("--type is required")
 			}
-			if cmd.Flags().Changed("dayamount") && dayAmount <= 0 {
+			startChanged := cmd.Flags().Changed("start")
+			endChanged := cmd.Flags().Changed("end")
+			dayAmountChanged := cmd.Flags().Changed("dayamount")
+			hoursChanged := cmd.Flags().Changed("hours")
+
+			resolvedMode, err := resolveAbsenceAddMode(mode, startChanged, endChanged, hoursChanged)
+			if err != nil {
+				return err
+			}
+
+			resolvedDateFrom := strings.TrimSpace(dateFrom)
+			resolvedDateTo := strings.TrimSpace(dateTo)
+			switch resolvedMode {
+			case absenceModeDays:
+				if startChanged || endChanged {
+					return fmt.Errorf("--start and --end are only supported when --mode=hours")
+				}
+				if hoursChanged {
+					return fmt.Errorf("--hours is only supported when --mode=hours")
+				}
+			case absenceModeHours:
+				if err := validateHHMM(startTime, "--start"); err != nil {
+					return err
+				}
+				if err := validateHHMM(endTime, "--end"); err != nil {
+					return err
+				}
+				if dayAmountChanged {
+					return fmt.Errorf("--dayamount is only supported when --mode=days")
+				}
+				if cmd.Flags().Changed("to") && strings.TrimSpace(dateTo) != resolvedDateFrom {
+					return fmt.Errorf("--to must match --from when --mode=hours")
+				}
+				resolvedDateTo = resolvedDateFrom
+			}
+
+			if _, _, err := parseWorktimesDateRange(resolvedDateFrom, resolvedDateTo); err != nil {
+				return err
+			}
+			if dayAmountChanged && dayAmount <= 0 {
 				return fmt.Errorf("--dayamount must be > 0")
 			}
-			if cmd.Flags().Changed("hours") && absenceHours < 0 {
+			if hoursChanged && absenceHours < 0 {
 				return fmt.Errorf("--hours must be >= 0")
 			}
 
@@ -72,26 +102,34 @@ func newAbsenceAddCommand() *cobra.Command {
 			if resolvedUserID <= 0 {
 				return fmt.Errorf("--user is required (or set OTTA_CLI_USER_ID / run `otta status` to refresh cache)")
 			}
+			client := newAPIClient(cfg, configPath)
+			availableTypes, _, err := fetchModeAbsenceTypeOptions(cmd.Context(), client, resolvedMode, resolvedUserID)
+			if err != nil {
+				return fmt.Errorf("load absence types for --mode=%s: %w", resolvedMode, err)
+			}
+			if !containsAbsenceOptionID(availableTypes, absenceTypeID) {
+				return fmt.Errorf("--type %d is not available for --mode=%s; available: %s", absenceTypeID, resolvedMode, formatAbsenceOptionIDs(availableTypes, 8))
+			}
 
 			absence := map[string]any{
 				"user":        resolvedUserID,
 				"abcensetype": absenceTypeID,
-				"startdate":   strings.TrimSpace(dateFrom),
-				"starttime":   strings.TrimSpace(startTime),
-				"enddate":     strings.TrimSpace(dateTo),
-				"endtime":     strings.TrimSpace(endTime),
+				"startdate":   resolvedDateFrom,
+				"enddate":     resolvedDateTo,
 				"description": description,
 			}
-			if cmd.Flags().Changed("dayamount") {
+			if resolvedMode == absenceModeHours {
+				absence["starttime"] = strings.TrimSpace(startTime)
+				absence["endtime"] = strings.TrimSpace(endTime)
+			}
+			if dayAmountChanged {
 				absence["dayamount"] = dayAmount
 			}
-			if cmd.Flags().Changed("hours") {
+			if hoursChanged {
 				absence["absence_hours"] = absenceHours
 			}
 
 			body := map[string]any{"abcense": absence}
-
-			client := newAPIClient(cfg, configPath)
 			var raw any
 			if err := client.Request(cmd.Context(), http.MethodPost, "/abcenses", nil, body, &raw); err != nil {
 				return err
@@ -104,8 +142,9 @@ func newAbsenceAddCommand() *cobra.Command {
 					OK:      true,
 					Command: "absence add",
 					Data: map[string]any{
-						"id":  createdID,
-						"raw": raw,
+						"id":   createdID,
+						"mode": resolvedMode,
+						"raw":  raw,
 					},
 				})
 			}
@@ -121,13 +160,14 @@ func newAbsenceAddCommand() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&dateFrom, "from", today, "Start date in YYYY-MM-DD.")
-	cmd.Flags().StringVar(&dateTo, "to", today, "End date in YYYY-MM-DD.")
-	cmd.Flags().StringVar(&startTime, "start", "", "Optional start time in HH:MM (empty for whole-day absence).")
-	cmd.Flags().StringVar(&endTime, "end", "", "Optional end time in HH:MM (empty for whole-day absence).")
-	cmd.Flags().Int64Var(&absenceTypeID, "type", 0, "Absence type id (see `otta absence options`).")
+	cmd.Flags().StringVar(&dateTo, "to", today, "End date in YYYY-MM-DD (days mode; must equal --from for hours mode).")
+	cmd.Flags().StringVar(&mode, "mode", absenceModeAuto, "Absence mode: auto, days, hours.")
+	cmd.Flags().StringVar(&startTime, "start", "", "Start time in HH:MM (required for hours mode).")
+	cmd.Flags().StringVar(&endTime, "end", "", "End time in HH:MM (required for hours mode).")
+	cmd.Flags().Int64Var(&absenceTypeID, "type", 0, "Absence type id (see otta absence options).")
 	cmd.Flags().Int64Var(&userID, "user", 0, "User id.")
-	cmd.Flags().Float64Var(&dayAmount, "dayamount", 0, "Optional day amount (for example 1 or 0.5).")
-	cmd.Flags().Float64Var(&absenceHours, "hours", 0, "Optional absence duration in hours.")
+	cmd.Flags().Float64Var(&dayAmount, "dayamount", 0, "Optional day amount (days mode, for example 1 or 0.5).")
+	cmd.Flags().Float64Var(&absenceHours, "hours", 0, "Optional absence duration in hours (hours mode).")
 	cmd.Flags().StringVar(&description, "description", "", "Optional absence description.")
 	addOutputFormatFlags(cmd, &outputFormat, outputFormatText, outputFormatText, outputFormatJSON)
 
@@ -411,68 +451,4 @@ func newAbsenceDeleteCommand() *cobra.Command {
 	addOutputFormatFlags(cmd, &outputFormat, outputFormatText, outputFormatText, outputFormatJSON)
 
 	return cmd
-}
-
-func fetchAbsenceByID(cmd *cobra.Command, client *otta.Client, id int64) (map[string]any, any, error) {
-	var raw any
-	if err := client.Request(cmd.Context(), http.MethodGet, fmt.Sprintf("/abcenses/%d", id), nil, nil, &raw); err != nil {
-		return nil, nil, err
-	}
-
-	item := extractAbsenceItem(raw)
-	if item == nil {
-		return nil, nil, fmt.Errorf("absence %d not found", id)
-	}
-
-	return item, raw, nil
-}
-
-func extractAbsenceItem(raw any) map[string]any {
-	if typed, ok := raw.(map[string]any); ok {
-		for _, key := range []string{"abcense", "absence", "item", "data"} {
-			value, ok := typed[key]
-			if !ok {
-				continue
-			}
-			item, ok := value.(map[string]any)
-			if !ok {
-				continue
-			}
-			return cloneAnyMap(item)
-		}
-		if toInt64(typed["id"]) > 0 {
-			return cloneAnyMap(typed)
-		}
-	}
-
-	return nil
-}
-
-func absenceTypeIDValue(value any) int64 {
-	if item, ok := value.(map[string]any); ok {
-		return toInt64(item["id"])
-	}
-	return toInt64(value)
-}
-
-func resolveAbsenceUserID(userID int64, cache *config.Cache) int64 {
-	if userID > 0 {
-		return userID
-	}
-	if value, ok := config.EnvInt64(config.EnvUserID); ok {
-		return value
-	}
-	if cache != nil {
-		if cache.User.ID > 0 {
-			return cache.User.ID
-		}
-	}
-	return 0
-}
-
-func validateOptionalHHMM(value string, flagName string) error {
-	if strings.TrimSpace(value) == "" {
-		return nil
-	}
-	return validateHHMM(value, flagName)
 }

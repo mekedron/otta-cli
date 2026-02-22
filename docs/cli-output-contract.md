@@ -112,6 +112,7 @@ Example (`absence add`, excerpt):
   "command": "absence add",
   "data": {
     "id": 51744722,
+    "mode": "days",
     "raw": {
       "abcense": {
         "id": 51744722,

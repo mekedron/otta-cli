@@ -46,10 +46,10 @@ otta status
 - `otta calendar detailed`: generate full day-by-day detailed calendar report.
 - `otta holidays`: fetch workday calendar/holiday rows.
 - `otta holidays read`: fetch workday calendar/holiday rows (explicit read subcommand).
-- `otta absence options`: fetch absence type/user options.
+- `otta absence options`: fetch absence type/user options (supports mode-specific lookup with `--mode days|hours`).
 - `otta absence browse`: aggregate absence entries across a date range.
 - `otta absence read`: fetch one absence row by id.
-- `otta absence add`: create an absence row.
+- `otta absence add`: create an absence row (`--mode auto|days|hours`, default `auto`).
 - `otta absence update`: update an existing absence row.
 - `otta absence delete`: delete an absence row.
 - `otta absence comment`: generate absence comment text.
@@ -83,9 +83,11 @@ otta saldo --format json
 otta worktimes list --date 2026-02-20 --format json
 otta worktimes read --id <worktime-id> --format json
 otta holidays read --from 2026-02-20 --to 2026-02-20 --worktimegroup <id> --format json
-otta absence options --format json
+otta absence options --mode days --format json
+otta absence options --mode hours --format json
 otta absence browse --from 2026-02-01 --to 2026-02-28 --format json
-otta absence add --type <absence-type-id> --from 2026-02-20 --to 2026-02-20 --description "sick leave" --format json
+otta absence add --mode days --type <absence-type-id> --from 2026-02-20 --to 2026-02-20 --description "sick leave" --format json
+otta absence add --mode hours --type <absence-type-id> --from 2026-02-20 --start 09:00 --end 11:30 --hours 2.5 --description "extra hours" --format json
 otta absence read --id <absence-id> --format json
 otta absence update --id <absence-id> --description "sick leave" --format json
 otta absence delete --id <absence-id> --format json
@@ -104,4 +106,4 @@ A real terminal E2E sweep was run on 2026-02-22 against the live API, covering:
 - calendar overview
 - calendar detailed
 - holidays/holidays read
-- absence options/browse/read/add/update/delete/comment
+- absence options/browse/read/add/update/delete/comment, including mode-specific type checks (`days` vs `hours`)

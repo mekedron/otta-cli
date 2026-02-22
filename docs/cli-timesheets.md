@@ -176,25 +176,51 @@ otta absence browse --from 2026-02-01 --to 2026-02-28 --format json
 List selectable values for absence creation:
 
 ```bash
-otta absence options --format json
+otta absence options --mode days --format json
+otta absence options --mode hours --format json
 ```
 
-Optional API filter for absence type mode:
+Optional legacy raw API filter:
 
 ```bash
 otta absence options --type days --format json
 ```
 
-Add an absence row (required: `--type`, plus resolved user):
+Add a day-based absence row (required: `--type`, plus resolved user):
 
 ```bash
 otta absence add \
+  --mode days \
   --type <absence-type-id> \
   --from 2026-02-20 \
   --to 2026-02-20 \
   --description "sick leave" \
   --format json
 ```
+
+Add an hour-based absence row:
+
+```bash
+otta absence add \
+  --mode hours \
+  --type <absence-type-id> \
+  --from 2026-02-20 \
+  --start 09:00 \
+  --end 11:30 \
+  --hours 2.5 \
+  --description "extra hours" \
+  --format json
+```
+
+Mode notes:
+
+- `--mode auto|days|hours` is supported on `absence add` (`auto` default).
+- `auto` resolves to `hours` if `--start`, `--end`, or `--hours` is provided; otherwise it resolves to `days`.
+- hour mode requires `--start` and `--end`; `--to` must equal `--from`.
+- `absence options --mode ...` needs resolved user id (`--user`, `OTTA_CLI_USER_ID`, or cached user from `otta status`).
+- mode-specific `--type` validation is enforced against Otta option queries:
+  - days: `type=both||days||(empty)`
+  - hours: `type=both||hours||(empty)`
 
 If `--user` is omitted in `absence add`, fallback order is:
 
@@ -225,10 +251,10 @@ Minimal absence CRUD smoke flow (date used in live validation):
 DATE=2026-02-20
 
 # 1) Resolve type id
-otta absence options --format json
+otta absence options --mode days --format json
 
 # 2) Create one row (fill <absence-type-id>)
-otta absence add --type <absence-type-id> --from "$DATE" --to "$DATE" --description "tmp-smoke" --format json
+otta absence add --mode days --type <absence-type-id> --from "$DATE" --to "$DATE" --description "tmp-smoke" --format json
 
 # 3) Read/update/delete (replace <absence-id>)
 otta absence read --id <absence-id> --format json

@@ -109,12 +109,35 @@ Add absence:
 
 ```bash
 otta absence add \
+  --mode days \
   --type <absence-type-id> \
   --from 2026-02-20 \
   --to 2026-02-20 \
   --description "sick leave" \
   --format json
 ```
+
+Add hour-based absence:
+
+```bash
+otta absence add \
+  --mode hours \
+  --type <absence-type-id> \
+  --from 2026-02-20 \
+  --start 09:00 \
+  --end 11:30 \
+  --hours 2.5 \
+  --description "extra hours" \
+  --format json
+```
+
+- `otta absence add` mode handling:
+  - `--mode auto|days|hours` (default `auto`)
+  - `auto` resolves to `hours` if `--start`, `--end`, or `--hours` is present; otherwise `days`
+  - `hours` requires `--start` and `--end`, and enforces `--to == --from`
+- resolve mode-specific type IDs with:
+  - `otta absence options --mode days --format json`
+  - `otta absence options --mode hours --format json`
 
 - `--user` is optional if `OTTA_CLI_USER_ID` or cached user ID exists.
 
@@ -203,8 +226,9 @@ Use these variables when running in CI/non-interactive environments:
 5. Run `status --format json` before operations that rely on cached user/worktimegroup metadata.
 6. Validate dates/times before command execution (`YYYY-MM-DD`, `HH:MM`).
 7. Run `worktimes list` before `update` or `delete` when IDs are not explicitly known.
-8. Return exact command, exit code, and concise stderr message when failures happen.
-9. Never print raw credentials or tokens in summaries.
+8. For `absence add`, always resolve and use the right mode (`days` vs `hours`) and fetch mode-specific type options before choosing `--type`.
+9. Return exact command, exit code, and concise stderr message when failures happen.
+10. Never print raw credentials or tokens in summaries.
 
 ## Failure Recovery
 

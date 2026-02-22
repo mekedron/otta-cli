@@ -1294,15 +1294,21 @@ func TestAbsenceReadCommandE2E(t *testing.T) {
 
 func TestAbsenceAddCommandUsesCacheUserFallbackE2E(t *testing.T) {
 	var addPayload map[string]any
+	var typeQuery url.Values
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost || r.URL.Path != "/abcenses" {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/abcense/abcensetypes":
+			typeQuery = r.URL.Query()
+			_, _ = io.WriteString(w, `{"abcensetypes":[{"id":18423477,"text":"Sick leave - own"},{"id":19406377,"values":{"name":"Annual holidays"}}],"count":2}`)
+		case r.Method == http.MethodPost && r.URL.Path == "/abcenses":
+			if err := json.NewDecoder(r.Body).Decode(&addPayload); err != nil {
+				t.Fatalf("decode absence add payload failed: %v", err)
+			}
+			_, _ = io.WriteString(w, `{"abcense":{"id":51744799,"status":"open","user":24352445,"abcensetype":18423477,"startdate":"2026-02-20","enddate":"2026-02-20","description":"initial note"}}`)
+		default:
 			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.String())
 		}
-		if err := json.NewDecoder(r.Body).Decode(&addPayload); err != nil {
-			t.Fatalf("decode absence add payload failed: %v", err)
-		}
-		_, _ = io.WriteString(w, `{"abcense":{"id":51744799,"status":"open","user":24352445,"abcensetype":18423477,"startdate":"2026-02-20","enddate":"2026-02-20","description":"initial note"}}`)
 	}))
 	t.Cleanup(server.Close)
 
@@ -1336,6 +1342,12 @@ func TestAbsenceAddCommandUsesCacheUserFallbackE2E(t *testing.T) {
 	if strings.TrimSpace(errOut) != "" {
 		t.Fatalf("expected empty stderr, got %q", errOut)
 	}
+	if typeQuery.Get("type") != "both||days||(empty)" {
+		t.Fatalf("expected days type filter, got %q", typeQuery.Get("type"))
+	}
+	if typeQuery.Get("user") != "24352445" {
+		t.Fatalf("expected type lookup user=24352445, got %q", typeQuery.Get("user"))
+	}
 
 	absencePayload, ok := addPayload["abcense"].(map[string]any)
 	if !ok {
@@ -1361,8 +1373,141 @@ func TestAbsenceAddCommandUsesCacheUserFallbackE2E(t *testing.T) {
 	if !result.OK || result.Command != "absence add" {
 		t.Fatalf("unexpected command result: %#v", result)
 	}
+	if getString(result.Data, "mode") != "days" {
+		t.Fatalf("expected mode=days, got %#v", result.Data["mode"])
+	}
 	if toInt64(result.Data["id"]) != 51744799 {
 		t.Fatalf("expected created id=51744799, got %#v", result.Data["id"])
+	}
+}
+
+func TestAbsenceAddCommandHoursModeE2E(t *testing.T) {
+	var addPayload map[string]any
+	var typeQuery url.Values
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/abcense/abcensetypes":
+			typeQuery = r.URL.Query()
+			_, _ = io.WriteString(w, `{"abcensetypes":[{"id":18423459,"text":"Extra hours"}],"count":1}`)
+		case r.Method == http.MethodPost && r.URL.Path == "/abcenses":
+			if err := json.NewDecoder(r.Body).Decode(&addPayload); err != nil {
+				t.Fatalf("decode absence add payload failed: %v", err)
+			}
+			_, _ = io.WriteString(w, `{"abcense":{"id":51744801,"status":"open","user":24352445,"abcensetype":18423459,"startdate":"2026-02-20","starttime":"09:00","enddate":"2026-02-20","endtime":"11:30","description":"overtime"}}`)
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.String())
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	configPath := filepath.Join(t.TempDir(), "config.json")
+	cachePath := filepath.Join(t.TempDir(), "cache.json")
+	t.Setenv(config.EnvConfigPath, configPath)
+	t.Setenv(config.EnvCachePath, cachePath)
+
+	cfg := config.New()
+	cfg.APIBaseURL = server.URL
+	cfg.Token.AccessToken = "token-absence-add-hours"
+	if err := config.Save(configPath, cfg); err != nil {
+		t.Fatalf("save config failed: %v", err)
+	}
+	cache := config.NewCache()
+	cache.User.ID = 24352445
+	if err := config.SaveCache(cachePath, cache); err != nil {
+		t.Fatalf("save cache failed: %v", err)
+	}
+
+	code, out, errOut := runCLI(t, []string{
+		"absence", "add",
+		"--mode", "hours",
+		"--type", "18423459",
+		"--from", "2026-02-20",
+		"--start", "09:00",
+		"--end", "11:30",
+		"--hours", "2.5",
+		"--description", "overtime",
+		"--format", "json",
+	})
+	if code != 0 {
+		t.Fatalf("absence add hours failed code=%d stderr=%q", code, errOut)
+	}
+	if strings.TrimSpace(errOut) != "" {
+		t.Fatalf("expected empty stderr, got %q", errOut)
+	}
+
+	if typeQuery.Get("type") != "both||hours||(empty)" {
+		t.Fatalf("expected hours type filter, got %q", typeQuery.Get("type"))
+	}
+	if typeQuery.Get("user") != "24352445" {
+		t.Fatalf("expected type lookup user=24352445, got %q", typeQuery.Get("user"))
+	}
+
+	absencePayload, ok := addPayload["abcense"].(map[string]any)
+	if !ok {
+		t.Fatalf("missing abcense payload: %#v", addPayload)
+	}
+	if getString(absencePayload, "startdate") != "2026-02-20" || getString(absencePayload, "enddate") != "2026-02-20" {
+		t.Fatalf("unexpected hours mode date fields: %#v", absencePayload)
+	}
+	if getString(absencePayload, "starttime") != "09:00" || getString(absencePayload, "endtime") != "11:30" {
+		t.Fatalf("unexpected hours mode start/end time: %#v", absencePayload)
+	}
+	if _, exists := absencePayload["dayamount"]; exists {
+		t.Fatalf("dayamount should not be sent in hours mode: %#v", absencePayload)
+	}
+	if hours, ok := toFloat64(absencePayload["absence_hours"]); !ok || hours != 2.5 {
+		t.Fatalf("expected absence_hours=2.5, got %#v", absencePayload["absence_hours"])
+	}
+
+	var result cliJSONResult
+	if err := json.Unmarshal([]byte(out), &result); err != nil {
+		t.Fatalf("decode absence add hours result failed: %v\noutput=%s", err, out)
+	}
+	if getString(result.Data, "mode") != "hours" {
+		t.Fatalf("expected mode=hours, got %#v", result.Data["mode"])
+	}
+}
+
+func TestAbsenceAddCommandRejectsTypeOutsideModeE2E(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.Path != "/abcense/abcensetypes" {
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.String())
+		}
+		_, _ = io.WriteString(w, `{"abcensetypes":[{"id":18423459,"text":"Extra hours"}],"count":1}`)
+	}))
+	t.Cleanup(server.Close)
+
+	configPath := filepath.Join(t.TempDir(), "config.json")
+	cachePath := filepath.Join(t.TempDir(), "cache.json")
+	t.Setenv(config.EnvConfigPath, configPath)
+	t.Setenv(config.EnvCachePath, cachePath)
+
+	cfg := config.New()
+	cfg.APIBaseURL = server.URL
+	cfg.Token.AccessToken = "token-absence-mode-type"
+	if err := config.Save(configPath, cfg); err != nil {
+		t.Fatalf("save config failed: %v", err)
+	}
+	cache := config.NewCache()
+	cache.User.ID = 24352445
+	if err := config.SaveCache(cachePath, cache); err != nil {
+		t.Fatalf("save cache failed: %v", err)
+	}
+
+	code, _, errOut := runCLI(t, []string{
+		"absence", "add",
+		"--mode", "hours",
+		"--type", "18423477",
+		"--from", "2026-02-20",
+		"--start", "09:00",
+		"--end", "10:00",
+	})
+	if code != 1 {
+		t.Fatalf("expected hours add with invalid type to fail, got code=%d stderr=%q", code, errOut)
+	}
+	if !strings.Contains(errOut, "is not available for --mode=hours") {
+		t.Fatalf("expected invalid mode/type error, got %q", errOut)
 	}
 }
 
@@ -1555,6 +1700,100 @@ func TestAbsenceOptionsCommandE2E(t *testing.T) {
 	firstUser, ok := users[0].(map[string]any)
 	if !ok || toInt64(firstUser["id"]) != 24352445 {
 		t.Fatalf("unexpected first user option: %#v", users[0])
+	}
+}
+
+func TestAbsenceOptionsCommandModeQueryE2E(t *testing.T) {
+	var requestedTypesQuery url.Values
+	var requestedUsersQuery url.Values
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/abcense/abcensetypes":
+			requestedTypesQuery = r.URL.Query()
+			_, _ = io.WriteString(w, `{"abcensetypes":[{"id":18423459,"text":"Extra hours"}],"count":1}`)
+		case r.Method == http.MethodGet && r.URL.Path == "/abcense/users":
+			requestedUsersQuery = r.URL.Query()
+			_, _ = io.WriteString(w, `{"users":[{"id":24352445,"text":"Rabykin Nikita 14"}],"count":1}`)
+		default:
+			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.String())
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	configPath := filepath.Join(t.TempDir(), "config.json")
+	cachePath := filepath.Join(t.TempDir(), "cache.json")
+	t.Setenv(config.EnvConfigPath, configPath)
+	t.Setenv(config.EnvCachePath, cachePath)
+
+	cfg := config.New()
+	cfg.APIBaseURL = server.URL
+	cfg.Token.AccessToken = "token-absence-options-mode"
+	if err := config.Save(configPath, cfg); err != nil {
+		t.Fatalf("save config failed: %v", err)
+	}
+	cache := config.NewCache()
+	cache.User.ID = 24352445
+	if err := config.SaveCache(cachePath, cache); err != nil {
+		t.Fatalf("save cache failed: %v", err)
+	}
+
+	code, out, errOut := runCLI(t, []string{"absence", "options", "--mode", "hours", "--format", "json"})
+	if code != 0 {
+		t.Fatalf("absence options mode failed code=%d stderr=%q", code, errOut)
+	}
+	if strings.TrimSpace(errOut) != "" {
+		t.Fatalf("expected empty stderr, got %q", errOut)
+	}
+
+	if requestedTypesQuery.Get("type") != "both||hours||(empty)" {
+		t.Fatalf("expected mode type filter both||hours||(empty), got %q", requestedTypesQuery.Get("type"))
+	}
+	if requestedTypesQuery.Get("user") != "24352445" {
+		t.Fatalf("expected mode user=24352445, got %q", requestedTypesQuery.Get("user"))
+	}
+	if requestedUsersQuery.Get("limit") != "100" || requestedUsersQuery.Get("offset") != "0" {
+		t.Fatalf("unexpected users query: %#v", requestedUsersQuery)
+	}
+
+	var result cliJSONResult
+	if err := json.Unmarshal([]byte(out), &result); err != nil {
+		t.Fatalf("decode absence options mode result failed: %v\noutput=%s", err, out)
+	}
+	filters, ok := result.Data["filters"].(map[string]any)
+	if !ok {
+		t.Fatalf("missing filters payload: %#v", result.Data)
+	}
+	if getString(filters, "mode") != "hours" {
+		t.Fatalf("expected filters.mode=hours, got %#v", filters["mode"])
+	}
+	if toInt64(filters["user"]) != 24352445 {
+		t.Fatalf("expected filters.user=24352445, got %#v", filters["user"])
+	}
+}
+
+func TestAbsenceOptionsCommandModeRequiresUserE2E(t *testing.T) {
+	configPath := filepath.Join(t.TempDir(), "config.json")
+	cachePath := filepath.Join(t.TempDir(), "cache.json")
+	t.Setenv(config.EnvConfigPath, configPath)
+	t.Setenv(config.EnvCachePath, cachePath)
+
+	cfg := config.New()
+	cfg.APIBaseURL = "https://api.example.invalid"
+	cfg.Token.AccessToken = "token-absence-options-mode-user"
+	if err := config.Save(configPath, cfg); err != nil {
+		t.Fatalf("save config failed: %v", err)
+	}
+	if err := config.SaveCache(cachePath, config.NewCache()); err != nil {
+		t.Fatalf("save cache failed: %v", err)
+	}
+
+	code, _, errOut := runCLI(t, []string{"absence", "options", "--mode", "days"})
+	if code != 1 {
+		t.Fatalf("expected mode options without user fallback to fail, got code=%d stderr=%q", code, errOut)
+	}
+	if !strings.Contains(errOut, "--user is required when --mode is set") {
+		t.Fatalf("unexpected stderr: %q", errOut)
 	}
 }
 

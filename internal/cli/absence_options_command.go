@@ -1,11 +1,14 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/mekedron/otta-cli/internal/config"
+	"github.com/mekedron/otta-cli/internal/otta"
 	"github.com/spf13/cobra"
 )
 
@@ -22,6 +25,8 @@ type absenceOption struct {
 func newAbsenceOptionsCommand() *cobra.Command {
 	var (
 		typeFilter   string
+		mode         string
+		userID       int64
 		outputFormat string
 	)
 
@@ -42,29 +47,32 @@ func newAbsenceOptionsCommand() *cobra.Command {
 			if err := requireAccessToken(cfg); err != nil {
 				return err
 			}
-
-			client := newAPIClient(cfg, configPath)
-			request := func(endpoint string, query map[string]string) (map[string]any, error) {
-				var raw map[string]any
-				if err := client.Request(cmd.Context(), http.MethodGet, endpoint, query, nil, &raw); err != nil {
-					return nil, err
-				}
-				if raw == nil {
-					return map[string]any{}, nil
-				}
-				return raw, nil
-			}
-
-			typesQuery := map[string]string{"limit": "100", "offset": "0"}
-			if strings.TrimSpace(typeFilter) != "" {
-				typesQuery["type"] = strings.TrimSpace(typeFilter)
-			}
-			typesRaw, err := request("/abcense/abcensetypes", typesQuery)
+			cachePath := config.ResolveCachePath()
+			cache, err := loadRuntimeCache(cachePath)
 			if err != nil {
 				return err
 			}
 
-			usersRaw, err := request("/abcense/users", map[string]string{"limit": "100", "offset": "0"})
+			client := newAPIClient(cfg, configPath)
+			resolvedUserID := resolveAbsenceUserID(userID, cache)
+			resolvedMode := ""
+			if cmd.Flags().Changed("mode") {
+				resolvedMode, err = parseAbsenceMode(mode, false)
+				if err != nil {
+					return err
+				}
+			}
+
+			typesQuery, err := buildAbsenceTypeOptionsQuery(strings.TrimSpace(typeFilter), resolvedMode, resolvedUserID)
+			if err != nil {
+				return err
+			}
+			typesRaw, err := requestAbsenceOptions(cmd.Context(), client, "/abcense/abcensetypes", typesQuery)
+			if err != nil {
+				return err
+			}
+
+			usersRaw, err := requestAbsenceOptions(cmd.Context(), client, "/abcense/users", map[string]string{"limit": "100", "offset": "0"})
 			if err != nil {
 				return err
 			}
@@ -85,7 +93,10 @@ func newAbsenceOptionsCommand() *cobra.Command {
 					Command: "absence options",
 					Data: map[string]any{
 						"filters": map[string]any{
-							"type": strings.TrimSpace(typeFilter),
+							"type":       strings.TrimSpace(typeFilter),
+							"mode":       resolvedMode,
+							"user":       resolvedUserID,
+							"type_query": typesQuery["type"],
 						},
 						"options": options,
 						"raw":     raw,
@@ -107,9 +118,84 @@ func newAbsenceOptionsCommand() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&typeFilter, "type", "", "Optional absence type filter passed to API (e.g. days, both).")
+	cmd.Flags().StringVar(&mode, "mode", "", "Optional absence mode for type options: days or hours.")
+	cmd.Flags().Int64Var(&userID, "user", 0, "Optional user id (required when --mode is used if no fallback user is configured).")
 	addOutputFormatFlags(cmd, &outputFormat, outputFormatText, outputFormatText, outputFormatJSON)
 
 	return cmd
+}
+
+func requestAbsenceOptions(ctx context.Context, client *otta.Client, endpoint string, query map[string]string) (map[string]any, error) {
+	var raw map[string]any
+	if err := client.Request(ctx, http.MethodGet, endpoint, query, nil, &raw); err != nil {
+		return nil, err
+	}
+	if raw == nil {
+		return map[string]any{}, nil
+	}
+	return raw, nil
+}
+
+func buildAbsenceTypeOptionsQuery(rawTypeFilter string, mode string, userID int64) (map[string]string, error) {
+	query := map[string]string{
+		"limit":  "100",
+		"offset": "0",
+	}
+	if rawTypeFilter != "" && mode != "" {
+		return nil, fmt.Errorf("--type and --mode cannot be used together")
+	}
+	if mode != "" {
+		if userID <= 0 {
+			return nil, fmt.Errorf("--user is required when --mode is set (or set OTTA_CLI_USER_ID / run `otta status` to refresh cache)")
+		}
+		query["type"] = absenceTypeFilterForMode(mode)
+		query["user"] = strconv.FormatInt(userID, 10)
+		return query, nil
+	}
+	if rawTypeFilter != "" {
+		query["type"] = rawTypeFilter
+	}
+	return query, nil
+}
+
+func fetchModeAbsenceTypeOptions(ctx context.Context, client *otta.Client, mode string, userID int64) ([]absenceOption, map[string]any, error) {
+	query, err := buildAbsenceTypeOptionsQuery("", mode, userID)
+	if err != nil {
+		return nil, nil, err
+	}
+	raw, err := requestAbsenceOptions(ctx, client, "/abcense/abcensetypes", query)
+	if err != nil {
+		return nil, nil, err
+	}
+	return parseAbsenceOptions(raw["abcensetypes"]), raw, nil
+}
+
+func containsAbsenceOptionID(options []absenceOption, optionID int64) bool {
+	for _, item := range options {
+		if item.ID == optionID {
+			return true
+		}
+	}
+	return false
+}
+
+func formatAbsenceOptionIDs(options []absenceOption, limit int) string {
+	if len(options) == 0 {
+		return "(none)"
+	}
+	if limit <= 0 || limit > len(options) {
+		limit = len(options)
+	}
+
+	parts := make([]string, 0, limit+1)
+	for idx := 0; idx < limit; idx++ {
+		item := options[idx]
+		parts = append(parts, fmt.Sprintf("%d=%s", item.ID, displayOptionName(item.Name)))
+	}
+	if limit < len(options) {
+		parts = append(parts, fmt.Sprintf("... (%d more)", len(options)-limit))
+	}
+	return strings.Join(parts, ", ")
 }
 
 func parseAbsenceOptions(raw any) []absenceOption {
