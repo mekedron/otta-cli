@@ -114,6 +114,33 @@ jobs:
             exit 1
           fi
 
+      - name: Package skill archive
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if ! command -v zip >/dev/null 2>&1; then
+            echo "zip command is required but not available."
+            exit 1
+          fi
+
+          skill_dir="skills/otta-cli"
+          if [ ! -d "${skill_dir}" ]; then
+            echo "Skill directory not found: ${skill_dir}"
+            exit 1
+          fi
+
+          if [ ! -f "${skill_dir}/SKILL.md" ]; then
+            echo "Required skill file missing: ${skill_dir}/SKILL.md"
+            exit 1
+          fi
+
+          skill_archive="otta-cli_skill_${GITHUB_REF_NAME}.zip"
+          (
+            cd "${skill_dir}"
+            zip -r "../../dist/${skill_archive}" .
+          )
+
       - name: Generate checksums
         shell: bash
         run: |
@@ -122,7 +149,7 @@ jobs:
           (
             cd dist
             shopt -s nullglob
-            archives=(./*.tar.gz)
+            archives=(./*.tar.gz ./*.zip)
             if [ "${#archives[@]}" -eq 0 ]; then
               echo "No archives found for checksum generation."
               exit 1
@@ -160,6 +187,7 @@ jobs:
             echo
             echo "- Each platform archive contains \`otta\` and \`skills/otta-cli\`."
             echo "- \`SHA256SUMS\` contains checksums for all release archives."
+            echo "- \`otta-cli_skill_${CURRENT_TAG}.zip\` contains the AI agent skill bundle."
           } > RELEASE_NOTES.md
 
       - name: Publish release
@@ -172,6 +200,7 @@ jobs:
           overwrite_files: true
           files: |
             dist/*.tar.gz
+            dist/*.zip
             dist/SHA256SUMS
 
   sync_tap:
