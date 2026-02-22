@@ -1,0 +1,36 @@
+# Go
+bin/
+coverage.out
+*.test
+
+# Docs site
+/docs-site/build/
+/docs-site/node_modules/
+/docs-site/.docusaurus/
+
+# Local tooling
+.DS_Store
+
+# Python legacy caches kept ignored for local environments
+__pycache__/
+.venv*
+.pytest_cache/
+
+# Local profile/auth configs
+.otta/
+.otta-config.json
+*.otta-config.json
+.otta-cli/
+.chrome-profile/
+
+.scratches
+.codex
+.claude
+.agents
+
+skills-lock.json
+
+skills/*
+!skills/otta-cli/
+
+samples

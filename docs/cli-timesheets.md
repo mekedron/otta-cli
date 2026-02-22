@@ -1,0 +1,171 @@
+---
+sidebar_position: 4
+---
+
+# Time Tracking Workflows
+
+Before running these commands:
+
+1. Complete [Installation](./cli-installation.md)
+2. Authenticate with [Authentication](./cli-auth.md)
+
+## Worktimes
+
+Collect worktimes for a day:
+
+```bash
+otta worktimes list --date 2026-02-20 --format json
+```
+
+Browse worktimes across a date range:
+
+```bash
+otta worktimes browse --from 2026-02-20 --to 2026-02-26 --format json
+```
+
+Generate a report for a date range as JSON:
+
+```bash
+otta worktimes report --from 2026-02-01 --to 2026-02-28 --format json
+```
+
+Generate a report for a date range as CSV:
+
+```bash
+otta worktimes report --from 2026-02-01 --to 2026-02-28 --format csv
+```
+
+List selectable IDs before `add`:
+
+```bash
+otta worktimes options --date 2026-02-20 --format json
+```
+
+Filter options when IDs are dependent:
+
+```bash
+otta worktimes options \
+  --date 2026-02-20 \
+  --project <project-id> \
+  --worktype <worktype-id> \
+  --task <task-id> \
+  --format json
+```
+
+Add a worktime (required: `--project`, `--worktype`, plus resolved user):
+
+```bash
+otta worktimes add \
+  --date 2026-02-20 \
+  --start 09:00 \
+  --end 17:00 \
+  --pause 30 \
+  --project <project-id> \
+  --user <user-id> \
+  --worktype <worktype-id> \
+  --task <task-id> \
+  --subtask <subtask-id> \
+  --superior <superior-id> \
+  --description "Example task description"
+```
+
+If `--user` is omitted in `worktimes add`, fallback order is:
+
+- `OTTA_CLI_USER_ID`
+- cached user profile (`~/.otta-cli/cache.json` by default)
+
+Update a worktime:
+
+```bash
+otta worktimes update \
+  --id <worktime-id> \
+  --start 10:00 \
+  --end 18:00 \
+  --description "Shifted by one hour"
+```
+
+Delete a worktime:
+
+```bash
+otta worktimes delete --id <worktime-id>
+```
+
+Minimal CRUD smoke flow (same date used in live E2E validation):
+
+```bash
+DATE=2026-02-20
+MARKER="smoke-$(date +%s)"
+
+# 1) Fetch IDs
+otta worktimes options --date "$DATE" --format json
+
+# 2) Create one row (fill IDs from options output)
+otta worktimes add --date "$DATE" --start 06:00 --end 06:30 --pause 0 \
+  --project <project-id> --worktype <worktype-id> --description "$MARKER" --format json
+
+# 3) Update then delete (replace <worktime-id>)
+otta worktimes update --id <worktime-id> --description "${MARKER}-updated" --format json
+otta worktimes delete --id <worktime-id> --format json
+```
+
+## Holidays
+
+Fetch holidays/workday calendar range:
+
+```bash
+otta holidays --from 2026-02-20 --to 2026-02-20 --worktimegroup <worktimegroup-id> --format json
+```
+
+If `--worktimegroup` is omitted, CLI uses fallback values (if available).
+Fallback order for `--worktimegroup`:
+
+- `OTTA_CLI_WORKTIMEGROUP_ID`
+- cached user profile (`~/.otta-cli/cache.json` by default)
+
+## Absences
+
+Browse absences across a date range (calendar-compatible split rows):
+
+```bash
+otta absence browse --from 2026-02-01 --to 2026-02-28 --format json
+```
+
+List selectable values for absence creation:
+
+```bash
+otta absence options --format json
+```
+
+Optional API filter for absence type mode:
+
+```bash
+otta absence options --type days --format json
+```
+
+Generate unified calendar overview (worktimes + absences + holidays):
+
+```bash
+otta calendar overview --from 2026-02-01 --to 2026-02-28 --format json
+```
+
+`calendar overview` returns one `items[]` row per day in range, including weekends and days without entries.
+
+If `--worktimegroup` is omitted for `calendar overview`, fallback order is:
+
+- `OTTA_CLI_WORKTIMEGROUP_ID`
+- cached user profile (`~/.otta-cli/cache.json` by default)
+
+## Absence Comment Helper
+
+Generate consistent comment text for absence submissions:
+
+```bash
+otta absence comment \
+  --type sick \
+  --from 2026-02-20 \
+  --to 2026-02-20 \
+  --details "Flu symptoms, no work capacity" \
+  --format json
+```
+
+Use output text directly in Otta absence submission UI/workflow.

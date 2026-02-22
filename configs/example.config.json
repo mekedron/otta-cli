@@ -1,0 +1,11 @@
+{
+  "api_base_url": "https://api.moveniumprod.com",
+  "client_id": "ember_app",
+  "username": "your-username",
+  "token": {
+    "access_token": "replace-me",
+    "token_type": "Bearer",
+    "refresh_token": "replace-me-refresh",
+    "expires_at": "2026-02-22T12:00:00Z"
+  }
+}
